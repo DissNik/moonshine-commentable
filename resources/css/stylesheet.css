@@ -1,0 +1,36 @@
+@reference 'tailwindcss/theme';
+
+@layer components {
+    .comment-card {
+        @apply flex items-end max-w-8/10 lg:max-w-7/10 gap-2;
+    }
+
+    .comment-bubble {
+        background-color: var(--color-body);
+        @apply rounded-2xl rounded-bl-none;
+    }
+
+    .comment-card.is-other {
+        @apply self-start flex-row mr-auto;
+    }
+
+    .comment-card.is-other .comment-bubble {
+        @apply rounded-2xl rounded-bl-none;
+    }
+
+    .comment-card.is-author {
+        @apply self-end flex-row-reverse ml-auto;
+    }
+
+    .comment-card.is-author .comment-bubble {
+        @apply rounded-2xl rounded-br-none;
+    }
+
+    .comment-meta {
+        @apply flex items-center justify-end mt-1;
+    }
+
+    .comment-time {
+        @apply opacity-50;
+    }
+}
