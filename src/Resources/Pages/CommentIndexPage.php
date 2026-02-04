@@ -1,6 +1,6 @@
 <?php
 
-namespace DissNik\MoonShineCommentable\Resources\Comment\Pages;
+namespace DissNik\MoonShineCommentable\Resources\Pages;
 
 use DissNik\MoonShineCommentable\Components\CommentCard;
 use DissNik\MoonShineCommentable\Contracts\CommentContract;

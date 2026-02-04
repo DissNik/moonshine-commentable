@@ -1,9 +1,9 @@
 <?php
-namespace DissNik\MoonShineCommentable\Resources\Comment;
+namespace DissNik\MoonShineCommentable\Resources;
 
 use DissNik\MoonShineCommentable\Models\Comment;
-use DissNik\MoonShineCommentable\Resources\Comment\Pages\CommentFormPage;
-use DissNik\MoonShineCommentable\Resources\Comment\Pages\CommentIndexPage;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
 use Illuminate\Database\Eloquent\Model;
 use MoonShine\Crud\JsonResponse;
 use MoonShine\Laravel\Resources\ModelResource;

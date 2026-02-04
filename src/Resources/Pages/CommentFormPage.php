@@ -1,6 +1,6 @@
 <?php
 
-namespace DissNik\MoonShineCommentable\Resources\Comment\Pages;
+namespace DissNik\MoonShineCommentable\Resources\Pages;
 
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Laravel\Pages\Crud\FormPage;

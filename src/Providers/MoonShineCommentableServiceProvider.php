@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DissNik\MoonShineCommentable\Providers;
 
-use DissNik\MoonShineCommentable\Resources\Comment\CommentResource;
+use DissNik\MoonShineCommentable\Resources\CommentResource;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;

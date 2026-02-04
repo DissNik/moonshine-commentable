@@ -3,7 +3,7 @@
 namespace DissNik\MoonShineCommentable\Fields;
 
 use Closure;
-use DissNik\MoonShineCommentable\Resources\Comment\CommentResource;
+use DissNik\MoonShineCommentable\Resources\CommentResource;
 use Illuminate\Support\Collection;
 use MoonShine\AssetManager\Css;
 use MoonShine\Contracts\Core\HasComponentsContract;
