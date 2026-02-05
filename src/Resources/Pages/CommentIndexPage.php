@@ -2,12 +2,13 @@
 
 namespace DissNik\MoonShineCommentable\Resources\Pages;
 
-use DissNik\MoonShineCommentable\Components\CommentCard;
+use DissNik\MoonShineCommentable\Components\CommentsBuilder;
 use DissNik\MoonShineCommentable\Contracts\CommentContract;
+use DissNik\MoonShineCommentable\Contracts\CommenterContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Laravel\Pages\Crud\IndexPage;
-use MoonShine\UI\Components\CardsBuilder;
 use MoonShine\UI\Fields\ID;
+use MoonShine\UI\Fields\Text;
 
 class CommentIndexPage extends IndexPage
 {
@@ -15,6 +16,7 @@ class CommentIndexPage extends IndexPage
     {
         return [
             ID::make(),
+            Text::make('author.name'),
         ];
     }
 
@@ -26,21 +28,19 @@ class CommentIndexPage extends IndexPage
             ? $component->getOriginalItems()
             : [];
 
-        return CardsBuilder::make()
+        /** @var CommenterContract $user */
+        $user = auth()->user();
+
+        return CommentsBuilder::make()
             ->name($this->getListComponentName())
-            ->columnSpan(12)
+            ->commenter('author.name')
+            ->avatar('author.avatar_url')
+            ->message('text')
+            ->createdAt(fn(CommentContract $item) => $item->created_at->translatedFormat('d M H:i'))
+            ->updatedAt(fn(CommentContract $item) => $item->updated_at->translatedFormat('d M H:i'))
+            ->asAuthor(fn(CommentContract $item) => $item->isAuthor($user))
             ->items($items)
             ->async()
-            ->cast($resource->getCaster())
-            ->customComponent(function (CommentContract $item) {
-                $isAuthor = false;
-
-                if (auth()->check()) {
-                    $isAuthor = auth()->id() === $item->author?->getKey();
-                }
-
-                return CommentCard::make($item)
-                    ->asAuthor($isAuthor);
-            });
+            ->cast($resource->getCaster());
     }
 }

@@ -6,4 +6,5 @@ return [
         'policy' => DissNik\MoonShineCommentable\Policies\CommentPolicy::class,
     ],
     'height' => '600px',
+    'interval' => null
 ];

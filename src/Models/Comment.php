@@ -44,7 +44,7 @@ class Comment extends Model implements CommentContract
         static::creating(function ($model) {
             if (!$model->author_id && auth()->check()) {
                 $model->author_id = auth()->id();
-                $model->author_type = 'user';
+                $model->author_type = auth()->user()->getMorphClass();
             }
         });
     }
@@ -63,6 +63,7 @@ class Comment extends Model implements CommentContract
 
     public function isAuthor(CommenterContract $author): bool
     {
-        return $this->author_id === $author->getKey();
+        return $this->author_id === $author->getKey()
+            && $this->author_type === $author->getMorphClass();
     }
 }

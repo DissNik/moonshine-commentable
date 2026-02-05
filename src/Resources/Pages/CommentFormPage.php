@@ -22,8 +22,6 @@ class CommentFormPage extends FormPage
 
             Hidden::make('commentable_id'),
             Hidden::make('commentable_type'),
-            Hidden::make('author_id'),
-            Hidden::make('author_type'),
 
             Fieldset::make(__('moonshine-commentable::ui.message'), [
                 Flex::make([

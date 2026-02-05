@@ -1,13 +1,16 @@
 @reference 'tailwindcss/theme';
 
 @layer components {
+    .comments-list{
+        @apply overflow-y-auto scroll-smooth;
+    }
     .comment-card {
         @apply flex items-end max-w-8/10 lg:max-w-7/10 gap-2;
     }
 
     .comment-bubble {
         background-color: var(--color-body);
-        @apply rounded-2xl rounded-bl-none;
+        @apply rounded-2xl rounded-bl-none  p-2 px-3 w-full;
     }
 
     .comment-card.is-other {
@@ -24,6 +27,10 @@
 
     .comment-card.is-author .comment-bubble {
         @apply rounded-2xl rounded-br-none;
+    }
+
+    .comment-avatar {
+        @apply h-8 w-8 object-cover object-center overflow-hidden shrink-0 rounded-full;
     }
 
     .comment-meta {

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use MoonShine\Crud\JsonResponse;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\MenuManager\Attributes\SkipMenu;
+use MoonShine\Support\AlpineJs;
+use MoonShine\Support\Enums\JsEvent;
 use MoonShine\Support\Enums\SortDirection;
 use MoonShine\Support\Enums\ToastType;
 

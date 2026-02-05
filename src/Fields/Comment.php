@@ -54,10 +54,10 @@ class Comment extends HasMany
         return $resource
             ->customQueryBuilder($relation)
             ->getIndexPage()
-            ->getListComponent();
+            ->getListComponent(true);
     }
 
-    protected function prepareComponents(iterable $components, string $formId, $data): Collection
+    protected function prepareFormComponents(iterable $components, string $formId, $data): Collection
     {
         return collect($components)
             ->map(function ($component) use ($formId, $data) {
@@ -75,7 +75,7 @@ class Comment extends HasMany
                         ? $component->getFields()
                         : $component->getComponents();
 
-                    $this->prepareComponents($children, $formId, $data);
+                    $this->prepareFormComponents($children, $formId, $data);
                 }
 
                 return $component;
@@ -100,7 +100,7 @@ class Comment extends HasMany
             'commentable_type' => $item->getMorphClass(),
         ];
 
-        $components = $this->prepareComponents($resource->getFormPage()->fields(), $formId, $dataToFill);
+        $formComponents = $this->prepareFormComponents($resource->getFormPage()->fields(), $formId, $dataToFill);
 
         return [
             'isPersisted' => true,
@@ -111,13 +111,14 @@ class Comment extends HasMany
                 ->async(events: [
                     AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'crud-list'),
                     AlpineJs::event(JsEvent::FORM_RESET, $formId),
+                    AlpineJs::event('comment-add')
                 ])
                 ->customAttributes([
                     'id' => $formId,
                 ])
                 ->class('hidden')
                 ->hideSubmit(),
-            'components' => Components::make($components),
+            'formComponents' => Components::make($formComponents),
         ];
     }
 }
