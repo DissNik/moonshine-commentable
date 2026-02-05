@@ -2,10 +2,10 @@
 
 @layer components {
     .comments-list{
-        @apply overflow-y-auto scroll-smooth;
+        @apply overflow-y-auto scroll-smooth ;
     }
     .comment-card {
-        @apply flex items-end max-w-8/10 lg:max-w-7/10 gap-2;
+        @apply flex items-end w-8/10 lg:w-7/10 gap-2;
     }
 
     .comment-bubble {

@@ -15,6 +15,7 @@ use MoonShine\Crud\Components\Fragment;
 use MoonShine\UI\Components\Components;
 use MoonShine\UI\Components\IterableComponent;
 use MoonShine\UI\Components\Layout\Div;
+use MoonShine\UI\Components\Layout\Flex;
 use MoonShine\UI\Traits\HasAsync;
 use Throwable;
 
@@ -207,7 +208,6 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     {
         /** @var Collection<array-key, Comment> $items */
         $items = $this->getItems()->map(function (mixed $data, int $index) {
-
             if (! is_null($this->customComponent)) {
                 return call_user_func($this->customComponent, $data, $index, $this);
             }
@@ -221,19 +221,46 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                 Fragment::make($items)
                     ->name('crud-list')
                     ->class('space-y-2')
-                    ->autoUpdate(config('moonshine-commentable.interval')),
+                    ->when(
+                        $interval = config('moonshine-commentable.interval', 0),
+                        fn(Fragment $fragment) => $fragment->autoUpdate($interval)
+                    ),
             ])
                 ->customAttributes([
                     'x-data' => '{
-                        scrollToBottom() {
-                            setTimeout(() => { $el.scrollTop = $el.scrollHeight; }, 300);
+                        shouldScroll: true,
+
+                        isAtBottom() {
+                            const threshold = ' . config('moonshine-commentable.interval', 0) . ';
+                            return ($el.scrollHeight - $el.scrollTop - $el.clientHeight) < threshold;
                         },
+
+                        scrollToBottom(force = false) {
+                            if (force || this.shouldScroll) {
+                                const container = $el;
+                                setTimeout(() => {
+                                    container.scrollTop = container.scrollHeight;
+                                }, 50);
+                            }
+                        }
                     }',
-                    'x-init' => "scrollToBottom();",
-                    '@comment-add.window="scrollToBottom()"' => true
+                    'x-init' => '
+                        scrollToBottom(true);
+
+                        const observer = new MutationObserver(() => {
+                            scrollToBottom();
+                        });
+
+                        observer.observe($el, { childList: true, subtree: true });
+
+                        $el.addEventListener("scroll", () => {
+                            shouldScroll = isAtBottom();
+                        }, { passive: true });
+                    ',
+                    '@comment-add.window="scrollToBottom(true)"' => true,
                 ])
                 ->class('comments-list')
-                ->style('max-height:' . config('moonshine-commentable.height', '600px')),
+                ->style('max-height:' . config('moonshine-commentable.height', '600px') . ';'),
         ]);
     }
 
