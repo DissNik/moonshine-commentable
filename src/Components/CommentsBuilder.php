@@ -231,7 +231,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                         shouldScroll: true,
 
                         isAtBottom() {
-                            const threshold = ' . config('moonshine-commentable.interval', 0) . ';
+                            const threshold = ' . config('moonshine-commentable.threshold', 0) . ';
                             return ($el.scrollHeight - $el.scrollTop - $el.clientHeight) < threshold;
                         },
 
