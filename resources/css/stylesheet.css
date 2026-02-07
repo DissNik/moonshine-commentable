@@ -10,7 +10,7 @@
 
     .comment-bubble {
         background-color: var(--color-body);
-        @apply rounded-2xl rounded-bl-none  p-2 px-3 w-full;
+        @apply rounded-2xl rounded-bl-none p-2 px-3 w-full;
     }
 
     .comment-card.is-other {
@@ -34,7 +34,7 @@
     }
 
     .comment-meta {
-        @apply flex items-center justify-end mt-1;
+        @apply flex items-center justify-end;
     }
 
     .comment-time {

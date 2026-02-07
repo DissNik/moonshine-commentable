@@ -9,9 +9,9 @@ use MoonShine\Support\Enums\JsEvent;
 use MoonShine\UI\Components\ActionButton;
 use MoonShine\UI\Components\Layout\Flex;
 use MoonShine\UI\Fields\Fieldset;
-use MoonShine\UI\Fields\Text;
 use MoonShine\UI\Fields\Hidden;
 use MoonShine\UI\Fields\ID;
+use MoonShine\UI\Fields\Textarea;
 
 class CommentFormPage extends FormPage
 {
@@ -25,14 +25,15 @@ class CommentFormPage extends FormPage
 
             Fieldset::make(__('moonshine-commentable::ui.message'), [
                 Flex::make([
-                    Text::make('', 'text')
+                    Textarea::make('', 'text')
+                        ->customView('moonshine-commentable::fields.textarea')
                         ->required(),
                     ActionButton::make(__('moonshine-commentable::ui.send'))
                         ->secondary()
                         ->dispatchEvent(AlpineJs::event(JsEvent::FORM_SUBMIT, 'comment_form'))
                 ])
                     ->unwrap()
-                    ->itemsAlign('end')
+                    ->itemsAlign('center')
             ]),
         ];
     }
@@ -40,7 +41,7 @@ class CommentFormPage extends FormPage
     public function rules(DataWrapperContract $item): array
     {
         return [
-            'text' => ['required', 'min:3'],
+            'text' => ['required', 'min:3', 'max:255'],
         ];
     }
 }
