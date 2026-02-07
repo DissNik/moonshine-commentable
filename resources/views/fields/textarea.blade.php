@@ -27,6 +27,4 @@
     x-on:reset.window="$nextTick(() => resize())"
     x-on:form-reset.window="$nextTick(() => resize())"
     style="resize: none;"
->
-    {!! $value ?? '' !!}
-</textarea>
+>{!! $value ?? '' !!}</textarea>
