@@ -11,11 +11,11 @@ use MoonShine\Contracts\Core\TypeCasts\DataCasterContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
 use MoonShine\Contracts\UI\HasAsyncContract;
+use MoonShine\Core\Traits\NowOn;
 use MoonShine\Crud\Components\Fragment;
 use MoonShine\UI\Components\Components;
 use MoonShine\UI\Components\IterableComponent;
 use MoonShine\UI\Components\Layout\Div;
-use MoonShine\UI\Components\Layout\Flex;
 use MoonShine\UI\Traits\HasAsync;
 use Throwable;
 
@@ -35,6 +35,9 @@ use function is_string;
 final class CommentsBuilder extends IterableComponent implements HasAsyncContract
 {
     use HasAsync;
+    use NowOn;
+
+    private const COMMENT_ADDED_EVENT = 'moonshine-commentable:comment-added';
 
     protected string $view = 'moonshine-commentable::components.comments';
 
@@ -94,6 +97,10 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
 
     protected bool $searchable = false;
 
+    protected null|int|string $commentableId = null;
+
+    protected ?string $commentableType = null;
+
     /**
      * @param  iterable<array-key, TData>  $items
      */
@@ -108,9 +115,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): string)|string $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): string)|string  $value
      */
     public function commenter(Closure|string $value): self
     {
@@ -120,9 +125,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): string)|string $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): string)|string  $value
      */
     public function avatar(Closure|string $value): self
     {
@@ -132,9 +135,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): string)|string $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): string)|string  $value
      */
     public function message(Closure|string $value): self
     {
@@ -144,9 +145,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): Carbon|string)|Carbon|string|null $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): Carbon|string)|Carbon|string|null  $value
      */
     public function createdAt(Closure|Carbon|string|null $value): self
     {
@@ -156,9 +155,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): Carbon|string)|Carbon|string|null $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): Carbon|string)|Carbon|string|null  $value
      */
     public function updatedAt(Closure|Carbon|string|null $value): self
     {
@@ -168,9 +165,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): bool)|bool $value
-     *
-     * @return self
+     * @param  (Closure(mixed $data, int $index, self $ctx): bool)|bool  $value
      */
     public function asAuthor(Closure|bool $value = true): self
     {
@@ -185,7 +180,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param (Closure(mixed $data, int $index, self $ctx): array<string, mixed>)|array<string, mixed> $attributes
+     * @param  (Closure(mixed $data, int $index, self $ctx): array<string, mixed>)|array<string, mixed>  $attributes
      */
     public function componentAttributes(array|Closure $attributes): self
     {
@@ -195,11 +190,19 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     }
 
     /**
-     * @param Closure(mixed $data, int $index, self $ctx): ComponentContract $component
+     * @param  Closure(mixed $data, int $index, self $ctx): ComponentContract  $component
      */
     public function customComponent(Closure $component): self
     {
         $this->customComponent = $component;
+
+        return $this;
+    }
+
+    public function commentable(null|int|string $id, ?string $type = null): self
+    {
+        $this->commentableId = $id;
+        $this->commentableType = $type;
 
         return $this;
     }
@@ -216,51 +219,154 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                 ->customAttributes(value($this->componentAttributes, $data, $index, $this));
         });
 
+        $fragmentParams = array_filter([
+            ...$this->getNowOnQueryParams(),
+            'commentable_id' => $this->commentableId,
+            'commentable_type' => $this->commentableType,
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
+
         return Components::make([
             Div::make([
                 Fragment::make($items)
-                    ->name('crud-list')
+                    ->name($this->getName())
+                    ->updateWith(
+                        $fragmentParams,
+                        $this->getNowOnResource(),
+                        $this->getNowOnPage(),
+                    )
+                    ->withSelectorsParams([
+                        'commentable_id' => '#comment_form [name="commentable_id"]',
+                        'commentable_type' => '#comment_form [name="commentable_type"]',
+                    ])
+                    ->customAttributes([
+                        'data-comments-items' => $this->getName(),
+                    ])
                     ->class('space-y-2')
                     ->when(
-                        $interval = config('moonshine-commentable.interval', 0),
-                        fn(Fragment $fragment) => $fragment->autoUpdate($interval)
+                        $this->commentableId === null
+                        && $this->commentableType === null
+                        && ($interval = config('moonshine-commentable.interval', 0)),
+                        fn (Fragment $fragment) => $fragment->autoUpdate($interval)
                     ),
             ])
                 ->customAttributes([
                     'x-data' => '{
-                        shouldScroll: true,
+                        autoRefreshEnabled: true,
+                        initialOpenScrollPending: false,
+                        pendingForceScroll: false,
+                        skipInitialMutation: true,
+                        lastItemsSignature: "",
+                        mutationObserver: null,
+
+                        getItemsContainer() {
+                            return $el.querySelector(\'[data-comments-items="'.$this->getName().'"]\');
+                        },
+
+                        getLastCommentElement() {
+                            return this.getItemsContainer()?.lastElementChild ?? null;
+                        },
+
+                        getItemsSignature() {
+                            const items = Array.from(this.getItemsContainer()?.querySelectorAll("[data-comment-item]") ?? []);
+
+                            return items.map((item) => item.textContent?.trim() ?? "").join("|");
+                        },
 
                         isAtBottom() {
-                            const threshold = ' . config('moonshine-commentable.threshold', 0) . ';
+                            const threshold = '.config('moonshine-commentable.threshold', 0).';
                             return ($el.scrollHeight - $el.scrollTop - $el.clientHeight) < threshold;
                         },
 
-                        scrollToBottom(force = false) {
-                            if (force || this.shouldScroll) {
-                                const container = $el;
-                                setTimeout(() => {
-                                    container.scrollTop = container.scrollHeight;
-                                }, 50);
+                        applyScrollToBottom(force = false) {
+                            if (! force && ! this.autoRefreshEnabled && ! this.pendingForceScroll) {
+                                return;
                             }
+
+                            const lastComment = this.getLastCommentElement();
+
+                            if (lastComment) {
+                                const targetTop = lastComment.offsetTop + lastComment.offsetHeight - $el.clientHeight;
+                                $el.scrollTop = Math.max(0, targetTop);
+                            } else {
+                                $el.scrollTop = $el.scrollHeight;
+                            }
+
+                            this.pendingForceScroll = false;
+                            this.autoRefreshEnabled = true;
+                            this.syncScrollState();
+                        },
+
+                        scheduleScrollToBottom(force = false) {
+                            if (! force && ! this.autoRefreshEnabled && ! this.pendingForceScroll) {
+                                return;
+                            }
+
+                            setTimeout(() => this.applyScrollToBottom(force), 40);
+                            requestAnimationFrame(() => requestAnimationFrame(() => this.applyScrollToBottom(force)));
+                            setTimeout(() => this.applyScrollToBottom(force), 140);
+                        },
+
+                        queueScroll(force = false) {
+                            this.pendingForceScroll = this.pendingForceScroll || force;
+                        },
+
+                        observeMutations() {
+                            this.mutationObserver?.disconnect();
+
+                            this.mutationObserver = new MutationObserver((mutations) => {
+                                const hasStructuralChange = mutations.some((mutation) =>
+                                    mutation.type === "childList" && (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
+                                );
+
+                                if (!hasStructuralChange) {
+                                    return;
+                                }
+
+                                const nextSignature = this.getItemsSignature();
+
+                                if (!nextSignature || nextSignature === this.lastItemsSignature) {
+                                    return;
+                                }
+
+                                this.lastItemsSignature = nextSignature;
+
+                                if (this.skipInitialMutation && !this.pendingForceScroll && !this.initialOpenScrollPending) {
+                                    this.skipInitialMutation = false;
+                                    this.syncScrollState();
+
+                                    return;
+                                }
+
+                                this.skipInitialMutation = false;
+                                this.initialOpenScrollPending = false;
+                                this.scheduleScrollToBottom(this.pendingForceScroll);
+                            });
+
+                            this.mutationObserver.observe($el, {
+                                childList: true,
+                                subtree: true,
+                            });
+                        },
+
+                        syncScrollState() {
+                            this.autoRefreshEnabled = this.isAtBottom();
+                            $el.dataset.commentsAutorefresh = this.autoRefreshEnabled ? "1" : "0";
                         }
                     }',
                     'x-init' => '
-                        scrollToBottom(true);
-
-                        const observer = new MutationObserver(() => {
-                            scrollToBottom();
-                        });
-
-                        observer.observe($el, { childList: true, subtree: true });
-
-                        $el.addEventListener("scroll", () => {
-                            shouldScroll = isAtBottom();
-                        }, { passive: true });
+                        $el.dataset.commentsAutorefresh = "1";
+                        lastItemsSignature = getItemsSignature();
+                        observeMutations();
+                        syncScrollState();
+                        requestAnimationFrame(() => syncScrollState());
+                        $el.addEventListener("scroll", () => syncScrollState(), { passive: true });
                     ',
-                    '@comment-add.window="scrollToBottom(true)"' => true,
+                    '@'.self::COMMENT_ADDED_EVENT.'.window' => 'queueScroll(true)',
+                    'data-comments-list-name' => $this->getName(),
+                    'data-comments-autorefresh' => '1',
                 ])
                 ->class('comments-list')
-                ->style('max-height:' . config('moonshine-commentable.height', '600px') . ';'),
+                ->style('max-height:'.config('moonshine-commentable.height', '600px').';'),
         ]);
     }
 
@@ -365,6 +471,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
 
     /**
      * @return array<string, mixed>
+     *
      * @throws Throwable
      */
     protected function viewData(): array

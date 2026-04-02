@@ -62,11 +62,18 @@ trait HasComments
             return (bool) $loadedUnreadState;
         }
 
-        return $this->applyUnreadConstraints(
-            $this->comments()->getQuery(),
-            $reader,
-            $this->comments()->getRelated()->getTable(),
-        )->exists();
+        return $this->unreadCommentsQuery($reader)->exists();
+    }
+
+    public function unreadCommentsCount(CommenterContract $reader): int
+    {
+        $loadedUnreadCount = $this->getAttribute('unread_comments_count');
+
+        if ($loadedUnreadCount !== null) {
+            return (int) $loadedUnreadCount;
+        }
+
+        return $this->unreadCommentsQuery($reader)->count();
     }
 
     public function scopeWithUnreadCommentsState(
@@ -84,6 +91,32 @@ trait HasComments
                 $commentTable,
             ),
         ]);
+    }
+
+    public function scopeWithUnreadCommentsCount(
+        Builder $query,
+        CommenterContract $reader,
+        string $column = 'unread_comments_count',
+    ): Builder {
+        $commentModel = config('moonshine-commentable.comment.model');
+        $commentTable = (new $commentModel())->getTable();
+
+        return $query->withCount([
+            "comments as {$column}" => fn (Builder $commentQuery): Builder => $this->applyUnreadConstraints(
+                $commentQuery,
+                $reader,
+                $commentTable,
+            ),
+        ]);
+    }
+
+    protected function unreadCommentsQuery(CommenterContract $reader): Builder
+    {
+        return $this->applyUnreadConstraints(
+            $this->comments()->getQuery(),
+            $reader,
+            $this->comments()->getRelated()->getTable(),
+        );
     }
 
     protected function applyUnreadConstraints(Builder $query, CommenterContract $reader, string $commentTable): Builder

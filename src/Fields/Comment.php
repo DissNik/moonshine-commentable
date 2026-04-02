@@ -4,6 +4,7 @@ namespace DissNik\MoonShineCommentable\Fields;
 
 use Closure;
 use DissNik\MoonShineCommentable\Resources\CommentResource;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
 use Illuminate\Support\Collection;
 use MoonShine\AssetManager\Css;
 use MoonShine\Contracts\Core\HasComponentsContract;
@@ -51,10 +52,28 @@ class Comment extends HasMany
         /** @var ModelResource $resource */
         $resource = $this->getResource();
 
-        return $resource
+        $component = $resource
             ->customQueryBuilder($relation)
             ->getIndexPage()
             ->getListComponent(true);
+
+        if (! is_null($casted)) {
+            if (method_exists($component, 'nowOnParams')) {
+                $component->nowOnParams([
+                    'commentable_id' => $casted->getKey(),
+                    'commentable_type' => $casted->getMorphClass(),
+                ]);
+            }
+
+            if (method_exists($component, 'commentable')) {
+                $component->commentable(
+                    $casted->getKey(),
+                    $casted->getMorphClass(),
+                );
+            }
+        }
+
+        return $component;
     }
 
     protected function prepareFormComponents(iterable $components, string $formId, $data): Collection
@@ -99,7 +118,6 @@ class Comment extends HasMany
             'commentable_id' => $item->getKey(),
             'commentable_type' => $item->getMorphClass(),
         ];
-
         $formComponents = $this->prepareFormComponents($resource->getFormPage()->fields(), $formId, $dataToFill);
 
         return [
@@ -109,9 +127,12 @@ class Comment extends HasMany
                 ->name($formId)
                 ->withoutRedirect()
                 ->async(events: [
-                    AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'crud-list'),
+                    AlpineJs::event(JsEvent::FRAGMENT_UPDATED, CommentIndexPage::LIST_COMPONENT_NAME, [
+                        'commentable_id' => (string) $item->getKey(),
+                        'commentable_type' => (string) $item->getMorphClass(),
+                    ]),
                     AlpineJs::event(JsEvent::FORM_RESET, $formId),
-                    AlpineJs::event('comment-add')
+                    AlpineJs::event('moonshine-commentable:comment-added'),
                 ])
                 ->customAttributes([
                     'id' => $formId,

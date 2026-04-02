@@ -7,7 +7,10 @@
     'isAuthor' => false,
 ])
 
-<div class="comment-card {{ $isAuthor ? 'is-author' : 'is-other' }}">
+<div
+    class="comment-card {{ $isAuthor ? 'is-author' : 'is-other' }}"
+    data-comment-item
+>
     @if(!$isAuthor)
         <div class="comment-avatar">
             <x-moonshine::img :src="$avatar" />

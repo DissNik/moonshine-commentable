@@ -12,6 +12,13 @@ use MoonShine\UI\Fields\Text;
 
 class CommentIndexPage extends IndexPage
 {
+    public const LIST_COMPONENT_NAME = 'commentable-list';
+
+    public function getListComponentName(): string
+    {
+        return self::LIST_COMPONENT_NAME;
+    }
+
     public function fields(): array
     {
         return [
@@ -31,8 +38,14 @@ class CommentIndexPage extends IndexPage
         /** @var CommenterContract $user */
         $user = auth()->user();
 
+        $queryParams = array_filter([
+            'commentable_id' => request()->input('commentable_id'),
+            'commentable_type' => request()->input('commentable_type'),
+        ], static fn (mixed $value): bool => $value !== null && $value !== '');
+
         return CommentsBuilder::make()
             ->name($this->getListComponentName())
+            ->nowOn($this, $resource, $queryParams)
             ->commenter('author.name')
             ->avatar('author.avatar_url')
             ->message('text')

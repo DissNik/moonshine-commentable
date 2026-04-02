@@ -4,12 +4,11 @@ namespace DissNik\MoonShineCommentable\Resources;
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
 use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use MoonShine\Crud\JsonResponse;
 use MoonShine\Laravel\Resources\ModelResource;
 use MoonShine\MenuManager\Attributes\SkipMenu;
-use MoonShine\Support\AlpineJs;
-use MoonShine\Support\Enums\JsEvent;
 use MoonShine\Support\Enums\SortDirection;
 use MoonShine\Support\Enums\ToastType;
 
@@ -42,6 +41,22 @@ class CommentResource extends ModelResource
             CommentIndexPage::class,
             CommentFormPage::class,
         ];
+    }
+
+    protected function modifyQueryBuilder(Builder $builder): Builder
+    {
+        $commentableId = request()->input('commentable_id');
+        $commentableType = request()->input('commentable_type');
+
+        if ($commentableId !== null && $commentableId !== '') {
+            $builder->where('commentable_id', $commentableId);
+        }
+
+        if ($commentableType !== null && $commentableType !== '') {
+            $builder->where('commentable_type', $commentableType);
+        }
+
+        return parent::modifyQueryBuilder($builder);
     }
 
     public function modifySaveResponse(JsonResponse $response): JsonResponse
