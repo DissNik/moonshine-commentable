@@ -7,6 +7,7 @@ namespace DissNik\MoonShineCommentable\Components;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Js;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use MoonShine\Contracts\Core\TypeCasts\DataCasterContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
@@ -250,117 +251,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                     ),
             ])
                 ->customAttributes([
-                    'x-data' => '{
-                        autoRefreshEnabled: true,
-                        initialOpenScrollPending: false,
-                        pendingForceScroll: false,
-                        skipInitialMutation: true,
-                        lastItemsSignature: "",
-                        mutationObserver: null,
-
-                        getItemsContainer() {
-                            return $el.querySelector(\'[data-comments-items="'.$this->getName().'"]\');
-                        },
-
-                        getLastCommentElement() {
-                            return this.getItemsContainer()?.lastElementChild ?? null;
-                        },
-
-                        getItemsSignature() {
-                            const items = Array.from(this.getItemsContainer()?.querySelectorAll("[data-comment-item]") ?? []);
-
-                            return items.map((item) => item.textContent?.trim() ?? "").join("|");
-                        },
-
-                        isAtBottom() {
-                            const threshold = '.CommentableConfig::scrollThreshold().';
-                            return ($el.scrollHeight - $el.scrollTop - $el.clientHeight) < threshold;
-                        },
-
-                        applyScrollToBottom(force = false) {
-                            if (! force && ! this.autoRefreshEnabled && ! this.pendingForceScroll) {
-                                return;
-                            }
-
-                            const lastComment = this.getLastCommentElement();
-
-                            if (lastComment) {
-                                const targetTop = lastComment.offsetTop + lastComment.offsetHeight - $el.clientHeight;
-                                $el.scrollTop = Math.max(0, targetTop);
-                            } else {
-                                $el.scrollTop = $el.scrollHeight;
-                            }
-
-                            this.pendingForceScroll = false;
-                            this.autoRefreshEnabled = true;
-                            this.syncScrollState();
-                        },
-
-                        scheduleScrollToBottom(force = false) {
-                            if (! force && ! this.autoRefreshEnabled && ! this.pendingForceScroll) {
-                                return;
-                            }
-
-                            setTimeout(() => this.applyScrollToBottom(force), 40);
-                            requestAnimationFrame(() => requestAnimationFrame(() => this.applyScrollToBottom(force)));
-                            setTimeout(() => this.applyScrollToBottom(force), 140);
-                        },
-
-                        queueScroll(force = false) {
-                            this.pendingForceScroll = this.pendingForceScroll || force;
-                        },
-
-                        observeMutations() {
-                            this.mutationObserver?.disconnect();
-
-                            this.mutationObserver = new MutationObserver((mutations) => {
-                                const hasStructuralChange = mutations.some((mutation) =>
-                                    mutation.type === "childList" && (mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0)
-                                );
-
-                                if (!hasStructuralChange) {
-                                    return;
-                                }
-
-                                const nextSignature = this.getItemsSignature();
-
-                                if (!nextSignature || nextSignature === this.lastItemsSignature) {
-                                    return;
-                                }
-
-                                this.lastItemsSignature = nextSignature;
-
-                                if (this.skipInitialMutation && !this.pendingForceScroll && !this.initialOpenScrollPending) {
-                                    this.skipInitialMutation = false;
-                                    this.syncScrollState();
-
-                                    return;
-                                }
-
-                                this.skipInitialMutation = false;
-                                this.initialOpenScrollPending = false;
-                                this.scheduleScrollToBottom(this.pendingForceScroll);
-                            });
-
-                            this.mutationObserver.observe($el, {
-                                childList: true,
-                                subtree: true,
-                            });
-                        },
-
-                        syncScrollState() {
-                            this.autoRefreshEnabled = this.isAtBottom();
-                            $el.dataset.commentsAutorefresh = this.autoRefreshEnabled ? "1" : "0";
-                        }
-                    }',
-                    'x-init' => '
-                        $el.dataset.commentsAutorefresh = "1";
-                        lastItemsSignature = getItemsSignature();
-                        observeMutations();
-                        syncScrollState();
-                        requestAnimationFrame(() => syncScrollState());
-                        $el.addEventListener("scroll", () => syncScrollState(), { passive: true });
-                    ',
+                    'x-data' => $this->commentsListRuntimeExpression(),
                     '@'.CommentableConfig::commentAddedEvent().'.window' => 'queueScroll(true)',
                     'data-comments-list-name' => $this->getName(),
                     'data-comments-autorefresh' => '1',
@@ -368,6 +259,17 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                 ->class('comments-list')
                 ->style('max-height:'.CommentableConfig::commentsHeight().';'),
         ]);
+    }
+
+    private function commentsListRuntimeExpression(): string
+    {
+        return sprintf(
+            'commentableCommentsList(%s)',
+            Js::from([
+                'listName' => $this->getName(),
+                'threshold' => CommentableConfig::scrollThreshold(),
+            ])
+        );
     }
 
     /**
