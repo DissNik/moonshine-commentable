@@ -27,7 +27,10 @@ The default install path remains the same, but projects can now override the Moo
 - `moonshine-commentable.moonshine.pages.index`: replace the default index page.
 - `moonshine-commentable.moonshine.pages.form`: replace the default form page.
 - `moonshine-commentable.moonshine.events.comment_added`: replace the client event emitted after async comment creation.
-- `moonshine-commentable.transport.mode`: reserve transport selection, with `polling` as the default.
+- `moonshine-commentable.transport.mode`: select transport behavior, with `polling` as the default and `websocket` reserved for opt-in host integrations.
+- `moonshine-commentable.transport.signals.comment_created`: stable server-side lifecycle signal emitted for newly created comments.
+- `moonshine-commentable.transport.payload.version`: payload contract version for server-side publishers.
+- `moonshine-commentable.transport.publisher`: optional host-owned publisher service implementing `CommentPublisherContract`.
 - `moonshine-commentable.transport.polling.interval`: polling interval used by the default list fragment.
 
 ## Integration guidance
@@ -35,3 +38,10 @@ The default install path remains the same, but projects can now override the Moo
 If a project needs custom author presentation, extra actions, or different MoonShine field/page wiring, prefer a custom resource or page class configured through `moonshine.resource` and `moonshine.pages.*` instead of patching package internals.
 
 The transport contract stays polling-first for now. Websocket support should later plug into the same transport configuration without changing the comment domain model or database schema.
+
+## Realtime baseline
+
+- Default install remains polling-first: no websocket or broadcast configuration is required when `transport.publisher` is `null`.
+- Browser refresh stays separate from server-side transport publishing. The MoonShine field still emits `moonshine.events.comment_added` after async form submit for local UI reactions.
+- Server-side publishing is now a package-level extension seam. When a comment is created, the package can publish a stable `comment.created` payload through a host-provided `CommentPublisherContract` implementation.
+- Tenant channel naming, authorization, and broadcast delivery remain host-app concerns and should be implemented outside the shared package.

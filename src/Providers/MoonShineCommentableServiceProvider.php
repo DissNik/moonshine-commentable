@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace DissNik\MoonShineCommentable\Providers;
 
+use DissNik\MoonShineCommentable\Contracts\CommentPublisherContract;
+use DissNik\MoonShineCommentable\Support\CommentPublisher;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
+use DissNik\MoonShineCommentable\Support\NullCommentPublisher;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
@@ -61,5 +64,17 @@ class MoonShineCommentableServiceProvider extends ServiceProvider
             __DIR__ . '/../../config/commentable.php',
             'moonshine-commentable'
         );
+
+        $this->app->singleton(CommentPublisherContract::class, function ($app): CommentPublisherContract {
+            $publisher = CommentableConfig::transportPublisher();
+
+            if ($publisher === null) {
+                return new NullCommentPublisher;
+            }
+
+            return $app->make($publisher);
+        });
+
+        $this->app->singleton(CommentPublisher::class);
     }
 }

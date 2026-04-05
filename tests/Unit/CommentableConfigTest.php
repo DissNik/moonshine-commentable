@@ -18,11 +18,17 @@ final class CommentableConfigTest extends TestCase
         config()->set('moonshine-commentable.moonshine.resource', 'App\\MoonShine\\Resources\\CustomCommentResource');
         config()->set('moonshine-commentable.moonshine.events.comment_added', 'comments:created');
         config()->set('moonshine-commentable.transport.polling.interval', 15);
+        config()->set('moonshine-commentable.transport.signals.comment_created', 'comments.created');
+        config()->set('moonshine-commentable.transport.payload.version', 2);
+        config()->set('moonshine-commentable.transport.publisher', 'App\\Comments\\RealtimePublisher');
 
         $this->assertSame('App\\CustomComment', CommentableConfig::commentModel());
         $this->assertSame('App\\MoonShine\\Resources\\CustomCommentResource', CommentableConfig::moonShineResource());
         $this->assertSame('comments:created', CommentableConfig::commentAddedEvent());
         $this->assertSame(15, CommentableConfig::pollingInterval());
+        $this->assertSame('comments.created', CommentableConfig::transportCreatedSignal());
+        $this->assertSame(2, CommentableConfig::transportPayloadVersion());
+        $this->assertSame('App\\Comments\\RealtimePublisher', CommentableConfig::transportPublisher());
     }
 
     public function test_default_values_remain_stable_when_nested_keys_are_absent(): void
@@ -34,6 +40,9 @@ final class CommentableConfigTest extends TestCase
         $this->assertSame(200, CommentableConfig::scrollThreshold());
         $this->assertNull(CommentableConfig::pollingInterval());
         $this->assertSame(CommentResource::class, CommentableConfig::moonShineResource());
+        $this->assertSame('comment.created', CommentableConfig::transportCreatedSignal());
+        $this->assertSame(1, CommentableConfig::transportPayloadVersion());
+        $this->assertNull(CommentableConfig::transportPublisher());
     }
 
     public function test_transport_mode_is_configurable(): void

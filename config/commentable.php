@@ -25,6 +25,13 @@ return [
     ],
     'transport' => [
         'mode' => 'polling',
+        'signals' => [
+            'comment_created' => 'comment.created',
+        ],
+        'payload' => [
+            'version' => 1,
+        ],
+        'publisher' => null,
         'polling' => [
             'interval' => null,
         ],

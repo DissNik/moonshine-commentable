@@ -70,4 +70,21 @@ final class CommentableConfig
     {
         return config('moonshine-commentable.transport.polling.interval');
     }
+
+    public static function transportCreatedSignal(): string
+    {
+        return (string) config('moonshine-commentable.transport.signals.comment_created', 'comment.created');
+    }
+
+    public static function transportPayloadVersion(): int
+    {
+        return (int) config('moonshine-commentable.transport.payload.version', 1);
+    }
+
+    public static function transportPublisher(): ?string
+    {
+        $publisher = config('moonshine-commentable.transport.publisher');
+
+        return is_string($publisher) && $publisher !== '' ? $publisher : null;
+    }
 }

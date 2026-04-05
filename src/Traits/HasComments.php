@@ -9,6 +9,7 @@ use DissNik\MoonShineCommentable\Contracts\CommentContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
 use DissNik\MoonShineCommentable\Events\CommentCreatedEvent;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
+use DissNik\MoonShineCommentable\Support\CommentPublisher;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -43,6 +44,7 @@ trait HasComments
         ]);
 
         CommentCreatedEvent::dispatch($comment);
+        app(CommentPublisher::class)->publishCreated($comment);
 
         return $comment;
     }
