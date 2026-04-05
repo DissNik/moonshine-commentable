@@ -3,8 +3,8 @@
 namespace DissNik\MoonShineCommentable\Fields;
 
 use Closure;
-use DissNik\MoonShineCommentable\Resources\CommentResource;
 use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use Illuminate\Support\Collection;
 use MoonShine\AssetManager\Css;
 use MoonShine\Contracts\Core\HasComponentsContract;
@@ -30,7 +30,7 @@ class Comment extends HasMany
         ?ModelResource $resource = null
     ) {
         if (is_null($resource)) {
-            $resource = CommentResource::class;
+            $resource = CommentableConfig::moonShineResource();
         }
 
         parent::__construct($label, $relationName, $formatted, $resource);
@@ -132,7 +132,7 @@ class Comment extends HasMany
                         'commentable_type' => (string) $item->getMorphClass(),
                     ]),
                     AlpineJs::event(JsEvent::FORM_RESET, $formId),
-                    AlpineJs::event('moonshine-commentable:comment-added'),
+                    AlpineJs::event(CommentableConfig::commentAddedEvent()),
                 ])
                 ->customAttributes([
                     'id' => $formId,

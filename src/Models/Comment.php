@@ -6,6 +6,7 @@ namespace DissNik\MoonShineCommentable\Models;
 
 use DissNik\MoonShineCommentable\Contracts\CommentContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -51,12 +52,12 @@ class Comment extends Model implements CommentContract
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(config('moonshine-commentable.comment.model'), 'parent_id');
+        return $this->belongsTo(CommentableConfig::commentModel(), 'parent_id');
     }
 
     public function replies(): HasMany
     {
-        return $this->hasMany(config('moonshine-commentable.comment.model'), 'parent_id')
+        return $this->hasMany(CommentableConfig::commentModel(), 'parent_id')
             ->with(['replies', 'author'])
             ->orderBy('created_at');
     }

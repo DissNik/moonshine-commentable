@@ -7,6 +7,7 @@ namespace DissNik\MoonShineCommentable\Components;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Collection;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use MoonShine\Contracts\Core\TypeCasts\DataCasterContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
@@ -36,8 +37,6 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
 {
     use HasAsync;
     use NowOn;
-
-    private const COMMENT_ADDED_EVENT = 'moonshine-commentable:comment-added';
 
     protected string $view = 'moonshine-commentable::components.comments';
 
@@ -245,7 +244,8 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                     ->when(
                         $this->commentableId === null
                         && $this->commentableType === null
-                        && ($interval = config('moonshine-commentable.interval', 0)),
+                        && CommentableConfig::transportMode() === 'polling'
+                        && ($interval = CommentableConfig::pollingInterval()),
                         fn (Fragment $fragment) => $fragment->autoUpdate($interval)
                     ),
             ])
@@ -273,7 +273,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                         },
 
                         isAtBottom() {
-                            const threshold = '.config('moonshine-commentable.threshold', 0).';
+                            const threshold = '.CommentableConfig::scrollThreshold().';
                             return ($el.scrollHeight - $el.scrollTop - $el.clientHeight) < threshold;
                         },
 
@@ -361,12 +361,12 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
                         requestAnimationFrame(() => syncScrollState());
                         $el.addEventListener("scroll", () => syncScrollState(), { passive: true });
                     ',
-                    '@'.self::COMMENT_ADDED_EVENT.'.window' => 'queueScroll(true)',
+                    '@'.CommentableConfig::commentAddedEvent().'.window' => 'queueScroll(true)',
                     'data-comments-list-name' => $this->getName(),
                     'data-comments-autorefresh' => '1',
                 ])
                 ->class('comments-list')
-                ->style('max-height:'.config('moonshine-commentable.height', '600px').';'),
+                ->style('max-height:'.CommentableConfig::commentsHeight().';'),
         ]);
     }
 

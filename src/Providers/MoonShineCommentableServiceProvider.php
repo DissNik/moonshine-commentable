@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace DissNik\MoonShineCommentable\Providers;
 
-use DissNik\MoonShineCommentable\Resources\CommentResource;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
@@ -42,12 +42,17 @@ class MoonShineCommentableServiceProvider extends ServiceProvider
             'moonshine-commentable'
         );
 
-        Gate::policy( config('moonshine-commentable.comment.model'), config('moonshine-commentable.comment.policy'));
+        Gate::policy(
+            CommentableConfig::commentModel(),
+            CommentableConfig::commentPolicy(),
+        );
 
-        $core
-            ->resources([
-                CommentResource::class,
-            ]);
+        if (CommentableConfig::registerMoonShineResource()) {
+            $core
+                ->resources([
+                    CommentableConfig::moonShineResource(),
+                ]);
+        }
     }
 
     public function register(): void

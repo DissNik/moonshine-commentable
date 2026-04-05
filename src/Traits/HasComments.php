@@ -8,6 +8,7 @@ use DissNik\MoonShineCommentable\Contracts\CommentableContract;
 use DissNik\MoonShineCommentable\Contracts\CommentContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
 use DissNik\MoonShineCommentable\Events\CommentCreatedEvent;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -18,17 +19,17 @@ trait HasComments
 {
     public function comments(): MorphMany
     {
-        return $this->morphMany(config('moonshine-commentable.comment.model'), 'commentable');
+        return $this->morphMany(CommentableConfig::commentModel(), 'commentable');
     }
 
     public function commentReads(): MorphMany
     {
-        return $this->morphMany(config('moonshine-commentable.comment_read.model'), 'commentable');
+        return $this->morphMany(CommentableConfig::commentReadModel(), 'commentable');
     }
 
     public function comment(CommentableContract $commentable, null|int|string $parent_id, string $text, CommenterContract $author): CommentContract
     {
-        $commentModel = config('moonshine-commentable.comment.model');
+        $commentModel = CommentableConfig::commentModel();
 
         if (! $author->can('create', $commentModel)) {
             throw new AuthorizationException('Cannot create comment');
@@ -81,7 +82,7 @@ trait HasComments
         CommenterContract $reader,
         string $column = 'has_unread_comments',
     ): Builder {
-        $commentModel = config('moonshine-commentable.comment.model');
+        $commentModel = CommentableConfig::commentModel();
         $commentTable = (new $commentModel())->getTable();
 
         return $query->withExists([
@@ -98,7 +99,7 @@ trait HasComments
         CommenterContract $reader,
         string $column = 'unread_comments_count',
     ): Builder {
-        $commentModel = config('moonshine-commentable.comment.model');
+        $commentModel = CommentableConfig::commentModel();
         $commentTable = (new $commentModel())->getTable();
 
         return $query->withCount([
@@ -121,7 +122,7 @@ trait HasComments
 
     protected function applyUnreadConstraints(Builder $query, CommenterContract $reader, string $commentTable): Builder
     {
-        $readModel = config('moonshine-commentable.comment_read.model');
+        $readModel = CommentableConfig::commentReadModel();
         $readTable = (new $readModel())->getTable();
         $readerKey = $reader->getKey();
         $readerType = $reader->getMorphClass();

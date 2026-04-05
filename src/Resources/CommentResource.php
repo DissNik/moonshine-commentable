@@ -2,8 +2,7 @@
 namespace DissNik\MoonShineCommentable\Resources;
 
 use DissNik\MoonShineCommentable\Models\Comment;
-use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
-use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use MoonShine\Crud\JsonResponse;
@@ -30,7 +29,7 @@ class CommentResource extends ModelResource
 
     public function getModel(): Model
     {
-        $class = config('moonshine-commentable.comment.model');
+        $class = CommentableConfig::commentModel();
 
         return new $class();
     }
@@ -38,8 +37,8 @@ class CommentResource extends ModelResource
     protected function pages(): array
     {
         return [
-            CommentIndexPage::class,
-            CommentFormPage::class,
+            CommentableConfig::moonShineIndexPage(),
+            CommentableConfig::moonShineFormPage(),
         ];
     }
 
