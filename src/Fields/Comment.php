@@ -52,6 +52,13 @@ class Comment extends HasMany
         /** @var ModelResource $resource */
         $resource = $this->getResource();
 
+        if (! is_null($casted) && method_exists($resource, 'setQueryParams') && method_exists($resource, 'getQueryParamName')) {
+            $resource->setQueryParams([
+                $resource->getQueryParamName('commentable_id') => $casted->getKey(),
+                $resource->getQueryParamName('commentable_type') => $casted->getMorphClass(),
+            ]);
+        }
+
         $component = $resource
             ->customQueryBuilder($relation)
             ->getIndexPage()

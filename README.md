@@ -87,7 +87,7 @@ class User extends Authenticatable implements CommenterContract
 }
 ```
 
-For the default MoonShine resource, the author model should also expose `name` and `avatar_url`, because the built-in index page maps comments with `author.name` and `author.avatar_url`.
+By default the package uses `CommenterContract::getCommenterName()` and `getCommenterAvatar()` for author presentation. You can also override this in config through the `presenters.author_name` and `presenters.author_avatar` callbacks.
 
 ## MoonShine Resource
 
@@ -128,9 +128,12 @@ The `HasComments` trait adds the following relations:
 You can create a comment from code:
 
 ```php
-$post->comment($post, null, 'First comment', $user);
-$post->comment($post, 10, 'Reply to comment #10', $user);
+$post->comment('First comment', $user);
+$post->comment('Reply to comment #10', $user, 10);
+$post->comment('Comment with payload', $user, payload: ['attachments' => 1]);
 ```
+
+The package no longer accepts the old self-passed signature such as `comment($post, ...)`.
 
 The default comment model stores:
 
@@ -184,6 +187,14 @@ return [
     'policies' => [
         'comment' => DissNik\MoonShineCommentable\Policies\CommentPolicy::class,
     ],
+    'commentables' => [
+        'resolver' => null,
+        'authorize' => null,
+    ],
+    'presenters' => [
+        'author_name' => null,
+        'author_avatar' => null,
+    ],
     'moonshine' => [
         'register_resource' => true,
         'resource' => DissNik\MoonShineCommentable\Resources\CommentResource::class,
@@ -222,6 +233,18 @@ Use these keys to replace the default classes:
 - `models.comment`
 - `models.comment_read`
 - `policies.comment`
+- `commentables.resolver`
+- `commentables.authorize`
+- `presenters.author_name`
+- `presenters.author_avatar`
+
+### Commentable resolver and authorization
+
+Use `commentables.resolver` to lock comment lookup to your own host models instead of trusting raw `commentable_id` and `commentable_type` request values.
+
+Use `commentables.authorize` to decide whether the current actor may `view`, `create`, `reply`, `update`, or `delete` comments for a resolved host model.
+
+If your host model implements `CommentableAccessContract`, the package can use that directly when no config callback is provided.
 
 ### MoonShine integration
 
@@ -306,10 +329,11 @@ If you need a different resource or page implementation, point the config to you
 
 The default policy allows:
 
-- create: allowed
-- reply: allowed
-- update: only for the comment author
-- delete: only for the comment author
+- view: delegated to the configured commentable authorization seam
+- create: allowed at the model policy layer, with host authorization enforced during comment creation
+- reply: delegated to the configured commentable authorization seam
+- update: only for the comment author and only when the host authorization seam allows it
+- delete: only for the comment author and only when the host authorization seam allows it
 
 Replace `policies.comment` if your application needs different rules.
 

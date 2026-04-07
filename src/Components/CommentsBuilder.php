@@ -7,7 +7,6 @@ namespace DissNik\MoonShineCommentable\Components;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Js;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use MoonShine\Contracts\Core\TypeCasts\DataCasterContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
@@ -17,7 +16,6 @@ use MoonShine\Core\Traits\NowOn;
 use MoonShine\Crud\Components\Fragment;
 use MoonShine\UI\Components\Components;
 use MoonShine\UI\Components\IterableComponent;
-use MoonShine\UI\Components\Layout\Div;
 use MoonShine\UI\Traits\HasAsync;
 use Throwable;
 
@@ -80,6 +78,11 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
      * @var (Closure(mixed, int, self): bool)|bool
      */
     protected Closure|bool $isAuthor = false;
+
+    /**
+     * @var (Closure(mixed, int, self): int|string|null)|int|string|null
+     */
+    protected Closure|int|string|null $commentId = null;
 
     /**
      * @var null|Closure(mixed, int, self): ComponentContract
@@ -174,6 +177,16 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
         return $this;
     }
 
+    /**
+     * @param  (Closure(mixed $data, int $index, self $ctx): int|string|null)|int|string|null  $value
+     */
+    public function commentId(Closure|int|string|null $value): self
+    {
+        $this->commentId = $value;
+
+        return $this;
+    }
+
     protected function prepareAsyncUrl(Closure|string|null $url = null): Closure|string
     {
         return $url ?? fn (): string => $this->getCore()->getRouter()->getEndpoints()->component(name: $this->getName());
@@ -226,50 +239,29 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
         ], static fn (mixed $value): bool => $value !== null && $value !== '');
 
         return Components::make([
-            Div::make([
-                Fragment::make($items)
-                    ->name($this->getName())
-                    ->updateWith(
-                        $fragmentParams,
-                        $this->getNowOnResource(),
-                        $this->getNowOnPage(),
-                    )
-                    ->withSelectorsParams([
-                        'commentable_id' => '#comment_form [name="commentable_id"]',
-                        'commentable_type' => '#comment_form [name="commentable_type"]',
-                    ])
-                    ->customAttributes([
-                        'data-comments-items' => $this->getName(),
-                    ])
-                    ->class('space-y-2')
-                    ->when(
-                        $this->commentableId === null
-                        && $this->commentableType === null
-                        && CommentableConfig::transportMode() === 'polling'
-                        && ($interval = CommentableConfig::pollingInterval()),
-                        fn (Fragment $fragment) => $fragment->autoUpdate($interval)
-                    ),
-            ])
-                ->customAttributes([
-                    'x-data' => $this->commentsListRuntimeExpression(),
-                    '@'.CommentableConfig::commentAddedEvent().'.window' => 'queueScroll(true)',
-                    'data-comments-list-name' => $this->getName(),
-                    'data-comments-autorefresh' => '1',
+            Fragment::make($items)
+                ->name($this->getName())
+                ->updateWith(
+                    $fragmentParams,
+                    $this->getNowOnResource(),
+                    $this->getNowOnPage(),
+                )
+                ->withSelectorsParams([
+                    'commentable_id' => '#comment_form [name="commentable_id"]',
+                    'commentable_type' => '#comment_form [name="commentable_type"]',
                 ])
-                ->class('comments-list')
-                ->style('max-height:'.CommentableConfig::commentsHeight().';'),
+                ->customAttributes([
+                    'data-comments-items' => $this->getName(),
+                ])
+                ->class('space-y-2')
+                ->when(
+                    $this->commentableId === null
+                    && $this->commentableType === null
+                    && CommentableConfig::transportMode() === 'polling'
+                    && ($interval = CommentableConfig::pollingInterval()),
+                    fn (Fragment $fragment) => $fragment->autoUpdate($interval)
+                ),
         ]);
-    }
-
-    private function commentsListRuntimeExpression(): string
-    {
-        return sprintf(
-            'commentableCommentsList(%s)',
-            Js::from([
-                'listName' => $this->getName(),
-                'threshold' => CommentableConfig::scrollThreshold(),
-            ])
-        );
     }
 
     /**
@@ -295,6 +287,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
             'createdAt' => $this->getMapperValue('createdAt', $data, $index),
             'updatedAt' => $this->getMapperValue('updatedAt', $data, $index),
             'isAuthor' => $this->getMapperValue('isAuthor', $data, $index),
+            'commentId' => $this->getMapperValue('commentId', $data, $index),
         ];
     }
 
@@ -391,6 +384,12 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
             'topRight' => $this->getTopRight(),
             'searchable' => $this->isSearchable(),
             'searchValue' => $this->getCore()->getRequest()->getScalar('search', ''),
+            'commentsHeight' => CommentableConfig::commentsHeight(),
+            'commentsListConfig' => [
+                'listName' => $this->getName(),
+                'threshold' => CommentableConfig::scrollThreshold(),
+                'commentAddedEvent' => CommentableConfig::commentAddedEvent(),
+            ],
         ];
     }
 }

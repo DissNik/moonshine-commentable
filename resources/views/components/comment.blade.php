@@ -5,11 +5,15 @@
     'createdAt' => null,
     'updatedAt' => null,
     'isAuthor' => false,
+    'commentId' => null,
 ])
 
 <div
     class="comment-card {{ $isAuthor ? 'is-author' : 'is-other' }}"
     data-comment-item
+    @if($commentId !== null)
+        data-comment-id="{{ $commentId }}"
+    @endif
 >
     @if(!$isAuthor)
         <div class="comment-avatar">

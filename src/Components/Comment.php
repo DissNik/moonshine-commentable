@@ -9,7 +9,7 @@ use Closure;
 use MoonShine\UI\Components\MoonShineComponent;
 
 /**
- * @method static static make(Closure|string $commenter, Closure|string $avatar, Closure|string $message, Closure|string $createdAt = null, Closure|string $updatedAt = null, Closure|bool $isAuthor = false)
+ * @method static static make(Closure|string $commenter, Closure|string $avatar, Closure|string $message, Closure|string $createdAt = null, Closure|string $updatedAt = null, Closure|bool $isAuthor = false, Closure|int|string|null $commentId = null)
  */
 final class Comment extends MoonShineComponent
 {
@@ -22,6 +22,7 @@ final class Comment extends MoonShineComponent
      * @param  (Closure(self):Carbon|string)|Carbon|string|null  $createdAt
      * @param  (Closure(self):Carbon|string)|Carbon|string|null  $updatedAt
      * @param  (Closure(self):bool)|bool  $isAuthor
+     * @param  (Closure(self):int|string|null)|int|string|null  $commentId
      */
     public function __construct(
         protected Closure|string $commenter,
@@ -30,6 +31,7 @@ final class Comment extends MoonShineComponent
         protected Closure|Carbon|string|null $createdAt,
         protected Closure|Carbon|string|null $updatedAt,
         protected Closure|bool $isAuthor = false,
+        protected Closure|int|string|null $commentId = null,
     )
     {
         parent::__construct();
@@ -59,6 +61,7 @@ final class Comment extends MoonShineComponent
             'createdAt' =>  value($this->createdAt, $this),
             'updatedAt' =>  value($this->updatedAt, $this),
             'isAuthor' =>  value($this->isAuthor, $this),
+            'commentId' => value($this->commentId, $this),
         ];
     }
 }
