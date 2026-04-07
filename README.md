@@ -1,47 +1,329 @@
-# Comment field for [MoonShine Laravel admin panel](https://moonshine-laravel.com)
+# MoonShine Commentable for [MoonShine Laravel admin panel](https://moonshine-laravel.com)
 
-A field for managing comments associated with this model through a `MorphMany` or `HasMany` relationship.
+`dissnik/moonshine-commentable` adds a comment field for MoonShine resources and a small comment domain for Eloquent models.
 
 <picture>
-    <img alt="Queue Dashboard" src="./art/screenshot.png">
+    <img alt="MoonShine Commentable" src="./art/screenshot.png">
 </picture>
 
----
+## Requirements
 
-## Current architecture
+- PHP 8.1+
+- MoonShine 4
+- Laravel application with Eloquent models
 
-The package now has two explicit layers:
+## Installation
 
-- Comment domain core: models, trait, events, policies, migrations, and config-based model resolution.
-- Optional MoonShine adapter: field, resource, pages, components, views, and assets.
+Install the package:
 
-The default install path remains the same, but projects can now override the MoonShine-facing layer without forking the package internals.
+```bash
+composer require dissnik/moonshine-commentable
+```
 
-## Public extension points
+Publish package files:
 
-- `moonshine-commentable.models.comment`: override the comment model.
-- `moonshine-commentable.models.comment_read`: override the read-state model.
-- `moonshine-commentable.policies.comment`: override the comment policy.
-- `moonshine-commentable.moonshine.register_resource`: disable automatic resource registration.
-- `moonshine-commentable.moonshine.resource`: replace the default `CommentResource`.
-- `moonshine-commentable.moonshine.pages.index`: replace the default index page.
-- `moonshine-commentable.moonshine.pages.form`: replace the default form page.
-- `moonshine-commentable.moonshine.events.comment_added`: replace the client event emitted after async comment creation.
-- `moonshine-commentable.transport.mode`: select transport behavior, with `polling` as the default and `websocket` reserved for opt-in host integrations.
-- `moonshine-commentable.transport.signals.comment_created`: stable server-side lifecycle signal emitted for newly created comments.
-- `moonshine-commentable.transport.payload.version`: payload contract version for server-side publishers.
-- `moonshine-commentable.transport.publisher`: optional host-owned publisher service implementing `CommentPublisherContract`.
-- `moonshine-commentable.transport.polling.interval`: polling interval used by the default list fragment.
+```bash
+php artisan vendor:publish --tag=moonshine-commentable-migrations
+php artisan vendor:publish --tag=moonshine-commentable-config
+php artisan vendor:publish --tag=moonshine-commentable-lang
+php artisan vendor:publish --tag=moonshine-commentable-assets
+```
 
-## Integration guidance
+Run migrations:
 
-If a project needs custom author presentation, extra actions, or different MoonShine field/page wiring, prefer a custom resource or page class configured through `moonshine.resource` and `moonshine.pages.*` instead of patching package internals.
+```bash
+php artisan migrate
+```
 
-The transport contract stays polling-first for now. Websocket support should later plug into the same transport configuration without changing the comment domain model or database schema.
+The package creates two tables:
 
-## Realtime baseline
+- `comments`
+- `comment_reads`
 
-- Default install remains polling-first: no websocket or broadcast configuration is required when `transport.publisher` is `null`.
-- Browser refresh stays separate from server-side transport publishing. The MoonShine field still emits `moonshine.events.comment_added` after async form submit for local UI reactions.
-- Server-side publishing is now a package-level extension seam. When a comment is created, the package can publish a stable `comment.created` payload through a host-provided `CommentPublisherContract` implementation.
-- Tenant channel naming, authorization, and broadcast delivery remain host-app concerns and should be implemented outside the shared package.
+## Model Setup
+
+### Commentable model
+
+Add the contract and trait to the model that should store comments:
+
+```php
+<?php
+
+namespace App\Models;
+
+use DissNik\MoonShineCommentable\Contracts\CommentableContract;
+use DissNik\MoonShineCommentable\Traits\HasComments;
+use Illuminate\Database\Eloquent\Model;
+
+class Post extends Model implements CommentableContract
+{
+    use HasComments;
+}
+```
+
+### Comment author model
+
+The authenticated author should implement `CommenterContract`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use DissNik\MoonShineCommentable\Contracts\CommenterContract;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+class User extends Authenticatable implements CommenterContract
+{
+    public function getCommenterName(): string
+    {
+        return $this->name;
+    }
+
+    public function getCommenterAvatar(): ?string
+    {
+        return $this->avatar_url;
+    }
+}
+```
+
+For the default MoonShine resource, the author model should also expose `name` and `avatar_url`, because the built-in index page maps comments with `author.name` and `author.avatar_url`.
+
+## MoonShine Resource
+
+Add the field to the resource that manages the commentable model:
+
+```php
+<?php
+
+namespace App\MoonShine\Resources;
+
+use App\Models\Post;
+use DissNik\MoonShineCommentable\Fields\Comment;
+use MoonShine\Laravel\Resources\ModelResource;
+
+class PostResource extends ModelResource
+{
+    protected string $model = Post::class;
+
+    public function fields(): array
+    {
+        return [
+            // ...
+            Comment::make('Comments', 'comments'),
+        ];
+    }
+}
+```
+
+Comments are shown after the main model is saved, because the field needs the record key and morph type.
+
+## Working With Comments
+
+The `HasComments` trait adds the following relations:
+
+- `comments(): MorphMany`
+- `commentReads(): MorphMany`
+
+You can create a comment from code:
+
+```php
+$post->comment($post, null, 'First comment', $user);
+$post->comment($post, 10, 'Reply to comment #10', $user);
+```
+
+The default comment model stores:
+
+- `commentable_id`
+- `commentable_type`
+- `author_id`
+- `author_type`
+- `parent_id`
+- `text`
+- `payload`
+
+## Unread State
+
+The package also stores read markers for each reader and commentable model.
+
+Available methods from `HasComments`:
+
+```php
+$post->markCommentsAsRead($user);
+
+$post->hasUnreadComments($user);
+$post->unreadCommentsCount($user);
+```
+
+There are also query scopes:
+
+```php
+Post::query()
+    ->withUnreadCommentsState($user)
+    ->withUnreadCommentsCount($user)
+    ->get();
+```
+
+By default these scopes expose:
+
+- `has_unread_comments`
+- `unread_comments_count`
+
+You can pass custom column names as the second argument.
+
+## Configuration
+
+The published config file is `config/moonshine-commentable.php`.
+
+```php
+return [
+    'models' => [
+        'comment' => DissNik\MoonShineCommentable\Models\Comment::class,
+        'comment_read' => DissNik\MoonShineCommentable\Models\CommentRead::class,
+    ],
+    'policies' => [
+        'comment' => DissNik\MoonShineCommentable\Policies\CommentPolicy::class,
+    ],
+    'moonshine' => [
+        'register_resource' => true,
+        'resource' => DissNik\MoonShineCommentable\Resources\CommentResource::class,
+        'pages' => [
+            'index' => DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage::class,
+            'form' => DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage::class,
+        ],
+        'events' => [
+            'comment_added' => 'moonshine-commentable:comment-added',
+        ],
+    ],
+    'ui' => [
+        'height' => '600px',
+        'threshold' => 200,
+    ],
+    'transport' => [
+        'mode' => 'polling',
+        'signals' => [
+            'comment_created' => 'comment.created',
+        ],
+        'payload' => [
+            'version' => 1,
+        ],
+        'publisher' => null,
+        'polling' => [
+            'interval' => null,
+        ],
+    ],
+];
+```
+
+### Model and policy overrides
+
+Use these keys to replace the default classes:
+
+- `models.comment`
+- `models.comment_read`
+- `policies.comment`
+
+### MoonShine integration
+
+Use these keys to customize MoonShine integration:
+
+- `moonshine.register_resource`
+- `moonshine.resource`
+- `moonshine.pages.index`
+- `moonshine.pages.form`
+- `moonshine.events.comment_added`
+
+By default the package registers its `CommentResource` in MoonShine and keeps it out of the menu.
+
+### UI options
+
+- `ui.height` controls the maximum height of the comments list
+- `ui.threshold` controls the auto-scroll threshold
+
+### Transport options
+
+The transport section is intended for projects that want to publish comment events to their own infrastructure.
+
+- `transport.mode`
+- `transport.signals.comment_created`
+- `transport.payload.version`
+- `transport.publisher`
+- `transport.polling.interval`
+
+## Custom Publisher
+
+If you want to publish comment events to WebSocket, broadcast, queue, or any other transport, implement `CommentPublisherContract`:
+
+```php
+<?php
+
+namespace App\Comments;
+
+use DissNik\MoonShineCommentable\Contracts\CommentPayloadContract;
+use DissNik\MoonShineCommentable\Contracts\CommentPublisherContract;
+
+class RealtimeCommentPublisher implements CommentPublisherContract
+{
+    public function publish(CommentPayloadContract $payload): void
+    {
+        // Publish $payload->toArray() to your transport
+    }
+}
+```
+
+Then register it in the config:
+
+```php
+'transport' => [
+    'publisher' => App\Comments\RealtimeCommentPublisher::class,
+],
+```
+
+The payload contains:
+
+- signal name
+- payload version
+- transport name
+- comment data
+- commentable model identifier
+- author identifier
+
+## Custom MoonShine Resource and Pages
+
+If you need a different resource or page implementation, point the config to your own classes:
+
+```php
+'moonshine' => [
+    'resource' => App\MoonShine\Resources\CommentResource::class,
+    'pages' => [
+        'index' => App\MoonShine\Pages\CommentIndexPage::class,
+        'form' => App\MoonShine\Pages\CommentFormPage::class,
+    ],
+],
+```
+
+## Policies
+
+The default policy allows:
+
+- create: allowed
+- reply: allowed
+- update: only for the comment author
+- delete: only for the comment author
+
+Replace `policies.comment` if your application needs different rules.
+
+## Translations and Assets
+
+The package includes:
+
+- language files in `lang/en` and `lang/ru`
+- published assets in `public/vendor/moonshine-commentable`
+
+## Testing
+
+Run the package tests with:
+
+```bash
+./vendor/bin/phpunit
+```
