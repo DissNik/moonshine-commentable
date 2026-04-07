@@ -24,5 +24,11 @@ abstract class TestCase extends Orchestra
         $core->shouldReceive('resources')->andReturnSelf();
 
         $app->instance(CoreContract::class, $core);
+        $app['config']->set('database.default', 'testing');
+        $app['config']->set('database.connections.testing', [
+            'driver' => 'sqlite',
+            'database' => ':memory:',
+            'prefix' => '',
+        ]);
     }
 }

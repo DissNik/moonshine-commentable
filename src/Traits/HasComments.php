@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 trait HasComments
 {
@@ -28,17 +29,36 @@ trait HasComments
         return $this->morphMany(CommentableConfig::commentReadModel(), 'commentable');
     }
 
-    public function comment(CommentableContract $commentable, null|int|string $parent_id, string $text, CommenterContract $author): CommentContract
-    {
+    public function comment(
+        string $text,
+        CommenterContract $author,
+        CommentContract|int|string|null $parent = null,
+        ?array $payload = null,
+    ): CommentContract {
         $commentModel = CommentableConfig::commentModel();
 
         if (! $author->can('create', $commentModel)) {
             throw new AuthorizationException('Cannot create comment');
         }
 
-        $comment = $commentable->comments()->create([
-            'parent_id' => $parent_id ?: null,
+        if (! CommentableConfig::authorizeCommentable($this, 'create', $author)) {
+            throw new AuthorizationException('Cannot create comment for this resource');
+        }
+
+        $parentComment = $this->resolveParentComment($parent);
+
+        if (
+            $parentComment !== null
+            && ! CommentableConfig::authorizeCommentable($this, 'reply', $author, $parentComment)
+        ) {
+            throw new AuthorizationException('Cannot reply to this comment');
+        }
+
+        /** @var CommentContract $comment */
+        $comment = $this->comments()->create([
+            'parent_id' => $parentComment?->getKey(),
             'text' => $text,
+            'payload' => $payload,
             'author_id' => $author->getKey(),
             'author_type' => $author->getMorphClass(),
         ]);
@@ -172,5 +192,36 @@ trait HasComments
             'reader_id' => $reader->getKey(),
             'reader_type' => $reader->getMorphClass(),
         ];
+    }
+
+    protected function resolveParentComment(CommentContract|int|string|null $parent): ?CommentContract
+    {
+        if ($parent === null || $parent === '') {
+            return null;
+        }
+
+        if ($parent instanceof CommentContract) {
+            $parentComment = $parent;
+        } else {
+            $commentModel = CommentableConfig::commentModel();
+            $parentComment = $commentModel::query()->find($parent);
+        }
+
+        if (! $parentComment instanceof CommentContract) {
+            throw ValidationException::withMessages([
+                'parent_id' => __('validation.exists', ['attribute' => 'parent_id']),
+            ]);
+        }
+
+        if (
+            data_get($parentComment, 'commentable_id') !== $this->getKey()
+            || data_get($parentComment, 'commentable_type') !== $this->getMorphClass()
+        ) {
+            throw ValidationException::withMessages([
+                'parent_id' => __('validation.exists', ['attribute' => 'parent_id']),
+            ]);
+        }
+
+        return $parentComment;
     }
 }

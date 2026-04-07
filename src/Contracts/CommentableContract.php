@@ -10,5 +10,12 @@ interface CommentableContract
 {
     public function comments(): MorphMany;
 
-    public function comment(CommentableContract $commentable, null|int|string $parent_id, string $text, CommenterContract $author): CommentContract;
+    public function commentReads(): MorphMany;
+
+    public function comment(
+        string $text,
+        CommenterContract $author,
+        CommentContract|int|string|null $parent = null,
+        ?array $payload = null,
+    ): CommentContract;
 }

@@ -8,6 +8,14 @@ return [
     'policies' => [
         'comment' => DissNik\MoonShineCommentable\Policies\CommentPolicy::class,
     ],
+    'commentables' => [
+        'resolver' => null,
+        'authorize' => null,
+    ],
+    'presenters' => [
+        'author_name' => null,
+        'author_avatar' => null,
+    ],
     'moonshine' => [
         'register_resource' => true,
         'resource' => DissNik\MoonShineCommentable\Resources\CommentResource::class,
