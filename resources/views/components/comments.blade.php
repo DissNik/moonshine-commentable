@@ -14,14 +14,15 @@
     'topRight' => null,
     'commentsHeight' => '600px',
     'commentsListConfig' => [],
+    'fillAvailableSpace' => false,
 ])
-<div class="js-cards-builder-container">
+<div @class(['js-cards-builder-container', 'commentable-list--fill' => $fillAvailableSpace])>
     <div x-data="cardsBuilder(
     {{ (int) $async }},
     '{{ $asyncUrl }}'
 )"
         @defineEventWhen($async, 'cards_updated', $name, 'asyncRequest')
-        {{ $attributes }}
+        {{ $attributes->class(['commentable-list__body']) }}
     >
         <x-moonshine::iterable-wrapper
             :searchable="$async && $searchable"
@@ -37,6 +38,7 @@
                 {!! $topRight ?? '' !!}
             </x-slot:topRight>
 
+            <div class="commentable-list__content">
             @if($comments->hasComponents())
                 <div
                     x-data='(() => {
@@ -69,6 +71,13 @@
                                 if (this.commentAddedListener !== null) {
                                     window.removeEventListener(config.commentAddedEvent, this.commentAddedListener);
                                 }
+                            },
+
+                            requestInitialScroll() {
+                                this.skipInitialMutation = false;
+                                this.initialOpenScrollPending = true;
+                                this.queueScroll(true);
+                                this.scheduleScrollToBottom(true);
                             },
 
                             getItemsContainer() {
@@ -104,6 +113,7 @@
                                 }
 
                                 this.pendingForceScroll = false;
+                                this.initialOpenScrollPending = false;
                                 this.autoRefreshEnabled = true;
                                 this.syncScrollState();
                             },
@@ -169,7 +179,7 @@
                     data-comments-list-name="{{ $name }}"
                     data-comments-autorefresh="1"
                     class="comments-list"
-                    style="max-height: {{ $commentsHeight }};"
+                    @unless($fillAvailableSpace) style="max-height: {{ $commentsHeight }};" @endunless
                 >
                     {!! $comments !!}
 
@@ -182,6 +192,7 @@
                     {{ $translates['notfound'] }}
                 </x-moonshine::alert>
             @endif
+            </div>
         </x-moonshine::iterable-wrapper>
     </div>
 </div>

@@ -3,8 +3,11 @@
 namespace DissNik\MoonShineCommentable\Fields;
 
 use Closure;
+use DissNik\MoonShineCommentable\Components\CommentsBuilder;
 use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
+use Illuminate\Contracts\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use MoonShine\AssetManager\Css;
 use MoonShine\Contracts\Core\HasComponentsContract;
@@ -16,12 +19,23 @@ use MoonShine\Support\AlpineJs;
 use MoonShine\Support\Enums\JsEvent;
 use MoonShine\UI\Components\Components;
 use MoonShine\UI\Components\FormBuilder;
+
 use function is_null;
 
 class Comment extends HasMany
 {
     protected string $view = 'moonshine-commentable::fields.comment';
+
     protected bool $outsideComponent = false;
+
+    protected bool $fillAvailableSpace = false;
+
+    public function fillAvailableSpace(bool $enabled = true): static
+    {
+        $this->fillAvailableSpace = $enabled;
+
+        return $this;
+    }
 
     public function __construct(
         Closure|string $label,
@@ -47,7 +61,7 @@ class Comment extends HasMany
     {
         $casted = $this->getRelatedModel();
 
-        $relation = $casted?->{$this->getRelationName()}();
+        $relation = $this->getCommentsQuery($casted);
 
         /** @var ModelResource $resource */
         $resource = $this->getResource();
@@ -63,6 +77,10 @@ class Comment extends HasMany
             ->customQueryBuilder($relation)
             ->getIndexPage()
             ->getListComponent(true);
+
+        if ($component instanceof CommentsBuilder) {
+            $component->fillAvailableSpace($this->fillAvailableSpace);
+        }
 
         if (! is_null($casted)) {
             if (method_exists($component, 'nowOnParams')) {
@@ -81,6 +99,11 @@ class Comment extends HasMany
         }
 
         return $component;
+    }
+
+    protected function getCommentsQuery(?Model $model): ?Builder
+    {
+        return $model?->{$this->getRelationName()}();
     }
 
     protected function prepareFormComponents(iterable $components, string $formId, $data): Collection
@@ -112,9 +135,9 @@ class Comment extends HasMany
     {
         $item = $this->getRelatedModel();
 
-        if (is_null($item) || !$item->exists) {
+        if (is_null($item) || ! $item->exists) {
             return [
-                'isPersisted' => false
+                'isPersisted' => false,
             ];
         }
 
@@ -129,6 +152,7 @@ class Comment extends HasMany
 
         return [
             'isPersisted' => true,
+            'fillAvailableSpace' => $this->fillAvailableSpace,
             'comments' => $this->getCardBuilder(),
             'form' => FormBuilder::make($resource->getRoute('crud.store'))
                 ->name($formId)

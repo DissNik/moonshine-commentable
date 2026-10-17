@@ -2,6 +2,7 @@
 
 namespace DissNik\MoonShineCommentable\Resources\Pages;
 
+use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Laravel\Pages\Crud\FormPage;
 use MoonShine\Support\AlpineJs;
@@ -30,10 +31,10 @@ class CommentFormPage extends FormPage
                         ->required(),
                     ActionButton::make(__('moonshine-commentable::ui.send'))
                         ->secondary()
-                        ->dispatchEvent(AlpineJs::event(JsEvent::FORM_SUBMIT, 'comment_form'))
+                        ->dispatchEvent(AlpineJs::event(JsEvent::FORM_SUBMIT, 'comment_form')),
                 ])
                     ->unwrap()
-                    ->itemsAlign('center')
+                    ->itemsAlign('center'),
             ]),
         ];
     }
@@ -41,7 +42,7 @@ class CommentFormPage extends FormPage
     public function rules(DataWrapperContract $item): array
     {
         return [
-            'text' => ['required', 'min:3', 'max:255'],
+            'text' => CommentableConfig::textRules(),
         ];
     }
 }

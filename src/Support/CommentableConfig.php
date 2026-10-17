@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace DissNik\MoonShineCommentable\Support;
 
-use DissNik\MoonShineCommentable\Contracts\CommentContract;
 use DissNik\MoonShineCommentable\Contracts\CommentableAccessContract;
 use DissNik\MoonShineCommentable\Contracts\CommentableContract;
+use DissNik\MoonShineCommentable\Contracts\CommentContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
 use DissNik\MoonShineCommentable\Policies\CommentPolicy;
 use DissNik\MoonShineCommentable\Resources\CommentResource;
@@ -16,6 +16,12 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 
 final class CommentableConfig
 {
+    /** @return list<string> */
+    public static function textRules(): array
+    {
+        return ['required', 'string', 'min:3', 'max:255'];
+    }
+
     public static function commentModel(): string
     {
         return (string) config('moonshine-commentable.models.comment');

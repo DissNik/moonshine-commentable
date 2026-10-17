@@ -6,8 +6,11 @@ namespace DissNik\MoonShineCommentable\Tests\Unit;
 
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Resources\CommentResource;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use DissNik\MoonShineCommentable\Tests\TestCase;
+use Illuminate\Support\Facades\Validator;
+use MoonShine\Laravel\TypeCasts\ModelDataWrapper;
 
 final class CommentableConfigTest extends TestCase
 {
@@ -50,5 +53,17 @@ final class CommentableConfigTest extends TestCase
         config()->set('moonshine-commentable.transport.mode', 'websocket');
 
         $this->assertSame('websocket', CommentableConfig::transportMode());
+    }
+
+    public function test_comment_form_accepts_only_text_from_three_to_255_unicode_characters(): void
+    {
+        $rules = app(CommentFormPage::class)->rules(new ModelDataWrapper(new Comment));
+
+        foreach (['', 'Я', 'Яя', str_repeat('Я', 256), 123, ['Яяя']] as $text) {
+            $this->assertTrue(Validator::make(['text' => $text], $rules)->fails(), 'Invalid message was accepted.');
+        }
+        foreach (['Яяя', str_repeat('Я', 255)] as $text) {
+            $this->assertTrue(Validator::make(['text' => $text], $rules)->passes(), 'Valid Unicode message was rejected.');
+        }
     }
 }

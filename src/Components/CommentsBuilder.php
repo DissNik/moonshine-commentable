@@ -6,8 +6,8 @@ namespace DissNik\MoonShineCommentable\Components;
 
 use Carbon\Carbon;
 use Closure;
-use Illuminate\Support\Collection;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
+use Illuminate\Support\Collection;
 use MoonShine\Contracts\Core\TypeCasts\DataCasterContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
@@ -99,6 +99,20 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
     protected ?Closure $topRight = null;
 
     protected bool $searchable = false;
+
+    protected bool $fillAvailableSpace = false;
+
+    public function fillAvailableSpace(bool $enabled = true): self
+    {
+        $this->fillAvailableSpace = $enabled;
+
+        return $this;
+    }
+
+    public function isFillAvailableSpace(): bool
+    {
+        return $this->fillAvailableSpace;
+    }
 
     protected null|int|string $commentableId = null;
 
@@ -385,6 +399,7 @@ final class CommentsBuilder extends IterableComponent implements HasAsyncContrac
             'searchable' => $this->isSearchable(),
             'searchValue' => $this->getCore()->getRequest()->getScalar('search', ''),
             'commentsHeight' => CommentableConfig::commentsHeight(),
+            'fillAvailableSpace' => $this->isFillAvailableSpace(),
             'commentsListConfig' => [
                 'listName' => $this->getName(),
                 'threshold' => CommentableConfig::scrollThreshold(),

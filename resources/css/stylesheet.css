@@ -1,5 +1,42 @@
 @reference 'tailwindcss/theme';
 
+@layer utilities {
+    .commentable-field--fill,
+    .commentable-field--fill > .commentable-field__layout,
+    .commentable-field--fill .commentable-field__messages,
+    .commentable-list--fill,
+    .commentable-list--fill > .commentable-list__body,
+    .commentable-list--fill > .commentable-list__body > div:has(> .commentable-list__content),
+    .commentable-list--fill .commentable-list__content {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .commentable-field--fill {
+        height: 100%;
+    }
+
+    .commentable-field--fill .commentable-field__messages {
+        overflow: hidden;
+    }
+
+    .commentable-field--fill .commentable-field__composer {
+        flex: 0 0 auto;
+    }
+
+    .commentable-list--fill .comments-list {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .commentable-field--fill textarea {
+        max-height: var(--commentable-composer-max-height, 25dvh);
+        overflow-y: auto;
+    }
+}
+
 @layer components {
     .comments-list{
         @apply overflow-y-auto scroll-smooth ;
@@ -34,7 +71,7 @@
     }
 
     .comment-meta {
-        @apply flex items-center justify-end;
+        @apply flex items-center justify-end mt-1;
     }
 
     .comment-time {
