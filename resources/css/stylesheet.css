@@ -1,5 +1,9 @@
 @reference 'tailwindcss/theme';
 
+.comment-card.is-other .comment-bubble:where(.dark, .dark *) {
+    background-color: var(--commentable-bubble-bg, var(--color-base-200));
+}
+
 @layer utilities {
     .commentable-field--fill,
     .commentable-field--fill > .commentable-field__layout,
