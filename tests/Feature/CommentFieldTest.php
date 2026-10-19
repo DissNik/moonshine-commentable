@@ -8,6 +8,7 @@ use DissNik\MoonShineCommentable\Components\CommentsBuilder;
 use DissNik\MoonShineCommentable\Fields\Comment as CommentField;
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Resources\CommentResource;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
 use DissNik\MoonShineCommentable\Resources\Pages\CommentIndexPage;
 use DissNik\MoonShineCommentable\Tests\TestCase;
 use DissNik\MoonShineCommentable\Traits\HasComments;
@@ -19,7 +20,12 @@ use Mockery;
 use MoonShine\Contracts\AssetManager\AssetManagerContract;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Contracts\Core\PageContract;
+use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
 use MoonShine\Contracts\UI\ComponentContract;
+use MoonShine\Laravel\Providers\MoonShineServiceProvider;
+use MoonShine\Support\AlpineJs;
+use MoonShine\Support\Enums\JsEvent;
+use MoonShine\UI\Components\Components;
 
 final class CommentFieldTest extends TestCase
 {
@@ -73,6 +79,42 @@ final class CommentFieldTest extends TestCase
         self::assertFalse($field->fillAvailableSpace(false)->listComponent()->isFillAvailableSpace());
     }
 
+    public function test_field_form_refreshes_its_own_list_resets_input_and_dispatches_the_configured_event(): void
+    {
+        (new MoonShineServiceProvider($this->app))->register();
+        config()->set('moonshine-commentable.moonshine.events.comment_added', 'package:comment-created');
+        $form = $this->field(PackageFieldProbe::class)->formData()['form'];
+
+        self::assertSame(AlpineJs::prepareEvents([
+            AlpineJs::event(JsEvent::FRAGMENT_UPDATED, 'commentable-list', [
+                'commentable_id' => 'post-1', 'commentable_type' => PackageFieldPost::class,
+            ]),
+            AlpineJs::event(JsEvent::FORM_RESET, 'comment_form'),
+            AlpineJs::event('package:comment-created'),
+        ]), $form->getAsyncEvents());
+        self::assertSame('comment_form', $form->getName());
+    }
+
+    public function test_field_view_omits_teleport_without_a_form_and_keeps_writable_forms(): void
+    {
+        $provider = new MoonShineServiceProvider($this->app);
+        $provider->register();
+        $provider->boot();
+        $data = [
+            'isPersisted' => true,
+            'comments' => '<div>История сообщений</div>',
+            'formComponents' => Components::make([]),
+            'fillAvailableSpace' => true,
+        ];
+        $readonly = view('moonshine-commentable::fields.comment', $data + ['form' => ''])->render();
+        self::assertStringContainsString('История сообщений', $readonly);
+        self::assertStringNotContainsString('x-teleport', $readonly);
+
+        $writable = view('moonshine-commentable::fields.comment', $data + ['form' => '<form id="generic-comment-form"></form>'])->render();
+        self::assertStringContainsString('<template x-teleport="body">', $writable);
+        self::assertStringContainsString('<form id="generic-comment-form">', $writable);
+    }
+
     /** @param class-string<PackageFieldProbe> $class */
     private function field(string $class): PackageFieldProbe
     {
@@ -106,6 +148,11 @@ class PackageFieldProbe extends CommentField
     {
         return $this->getCardBuilder();
     }
+
+    public function formData(): array
+    {
+        return $this->viewData();
+    }
 }
 
 final class PackageOverriddenFieldProbe extends PackageFieldProbe
@@ -118,6 +165,16 @@ final class PackageOverriddenFieldProbe extends PackageFieldProbe
 
 final class PackageFieldResource extends CommentResource
 {
+    public function getFormPage(): ?PageContract
+    {
+        return app(CommentFormPage::class);
+    }
+
+    public function getRoute(?string $name = null, DataWrapperContract|int|string|null $key = null, array $query = []): string
+    {
+        return '/comments';
+    }
+
     public function getIndexPage(): ?PageContract
     {
         return new PackageFieldIndexPage($this->customQueryBuilder);

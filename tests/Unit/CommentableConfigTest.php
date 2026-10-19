@@ -10,10 +10,26 @@ use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
 use DissNik\MoonShineCommentable\Support\CommentableConfig;
 use DissNik\MoonShineCommentable\Tests\TestCase;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Fluent;
 use MoonShine\Laravel\TypeCasts\ModelDataWrapper;
 
 final class CommentableConfigTest extends TestCase
 {
+    public function test_default_presenters_keep_author_details_and_handle_a_missing_author(): void
+    {
+        $comment = (new Comment)->setRelation('author', new Fluent([
+            'name' => 'Автор сообщения',
+            'avatar_url' => '/avatars/comment-author.png',
+        ]));
+
+        self::assertSame('Автор сообщения', CommentableConfig::resolveAuthorName($comment));
+        self::assertSame('/avatars/comment-author.png', CommentableConfig::resolveAuthorAvatar($comment));
+
+        $comment->setRelation('author', null);
+        self::assertSame('', CommentableConfig::resolveAuthorName($comment));
+        self::assertNull(CommentableConfig::resolveAuthorAvatar($comment));
+    }
+
     public function test_new_nested_config_keys_take_priority(): void
     {
         config()->set('moonshine-commentable.transport.mode', 'polling');
