@@ -20,7 +20,6 @@ use MoonShine\Contracts\AssetManager\AssetManagerContract;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Contracts\Core\PageContract;
 use MoonShine\Contracts\UI\ComponentContract;
-use MoonShine\Core\Core;
 
 final class CommentFieldTest extends TestCase
 {
@@ -32,7 +31,6 @@ final class CommentFieldTest extends TestCase
         $assets = Mockery::mock(AssetManagerContract::class);
         $assets->shouldReceive('add')->andReturnSelf();
         $core->shouldReceive('getContainer')->with(AssetManagerContract::class)->andReturn($assets);
-        Core::setInstance($core);
         config()->set('moonshine-commentable.models.comment', Comment::class);
         Schema::create('field_posts', function (Blueprint $table): void {
             $table->string('id')->primary();

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace DissNik\MoonShineCommentable\Tests\Feature;
 
-use DissNik\MoonShineCommentable\Contracts\CommentPayloadContract;
-use DissNik\MoonShineCommentable\Contracts\CommentPublisherContract;
 use DissNik\MoonShineCommentable\Contracts\CommentableContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
+use DissNik\MoonShineCommentable\Contracts\CommentPayloadContract;
+use DissNik\MoonShineCommentable\Contracts\CommentPublisherContract;
+use DissNik\MoonShineCommentable\Events\CommentCreatedEvent;
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Tests\TestCase;
 use DissNik\MoonShineCommentable\Traits\HasComments;
@@ -15,6 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Auth\Access\Authorizable;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
@@ -96,9 +98,17 @@ final class CommentDomainTest extends TestCase
 
         $foreignComment = $firstPost->comment('Foreign', $author);
 
-        $this->expectException(ValidationException::class);
-
-        $secondPost->comment('Reply', $author, $foreignComment);
+        Event::fake([CommentCreatedEvent::class]);
+        $publisher = app(CommentPublisherContract::class);
+        $published = count($publisher->payloads);
+        try {
+            $secondPost->comment('Reply', $author, $foreignComment);
+            $this->fail('Foreign parent was accepted');
+        } catch (ValidationException) {
+            $this->assertSame([$foreignComment->getKey()], Comment::query()->pluck('id')->all());
+            $this->assertCount($published, $publisher->payloads);
+            Event::assertNotDispatched(CommentCreatedEvent::class);
+        }
     }
 
     public function test_commentable_authorization_callback_can_block_comment_creation(): void
@@ -113,9 +123,15 @@ final class CommentDomainTest extends TestCase
         $post = PackageTestPost::query()->create(['id' => 'post-1', 'title' => 'Post']);
         $author = PackageTestUser::query()->create(['id' => 'user-1', 'name' => 'Author']);
 
-        $this->expectException(AuthorizationException::class);
-
-        $post->comment('Blocked', $author);
+        Event::fake([CommentCreatedEvent::class]);
+        try {
+            $post->comment('Blocked', $author);
+            $this->fail('Unauthorized comment was accepted');
+        } catch (AuthorizationException) {
+            $this->assertSame(0, Comment::query()->count());
+            $this->assertCount(0, app(CommentPublisherContract::class)->payloads);
+            Event::assertNotDispatched(CommentCreatedEvent::class);
+        }
     }
 }
 

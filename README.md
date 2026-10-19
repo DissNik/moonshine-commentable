@@ -346,7 +346,9 @@ The package includes:
 
 ## Testing
 
-Run the package tests with:
+Тесты пакета используют PostgreSQL на `127.0.0.1:5432` и ограниченную роль `domo_testing` с правами `LOGIN CREATEDB NOSUPERUSER NOCREATEROLE`. Пароль задаётся только через `DOMO_TEST_PG_PASSWORD` (локально допускается пустой). PHPUnit extension создаёт для каждого прогона собственную случайную БД `domo_test_commentable_<run>`, проверяет фактическое соединение перед записью и удаляет только созданную БД после прогона, включая провал assertion. Рабочая БД и её таблицы не используются. Нужны `pdo_pgsql` и работающий PostgreSQL.
+
+Запуск:
 
 ```bash
 ./vendor/bin/phpunit

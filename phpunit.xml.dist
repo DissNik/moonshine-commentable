@@ -3,7 +3,12 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
          colors="true"
+         failOnWarning="true"
+         failOnRisky="true"
 >
+    <extensions>
+        <bootstrap class="DissNik\MoonShineCommentable\Tests\PostgresExtension"/>
+    </extensions>
     <testsuites>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>

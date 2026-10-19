@@ -8,6 +8,7 @@ use DissNik\MoonShineCommentable\Contracts\CommentableContract;
 use DissNik\MoonShineCommentable\Contracts\CommenterContract;
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Resources\CommentResource;
+use DissNik\MoonShineCommentable\Resources\Pages\CommentFormPage;
 use DissNik\MoonShineCommentable\Tests\TestCase;
 use DissNik\MoonShineCommentable\Traits\HasComments;
 use Illuminate\Contracts\Database\Eloquent\Builder;
@@ -17,6 +18,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Schema;
 use MoonShine\Contracts\Core\DependencyInjection\CoreContract;
 use MoonShine\Contracts\Core\TypeCasts\DataWrapperContract;
+use MoonShine\Laravel\Providers\MoonShineServiceProvider;
 use MoonShine\Laravel\TypeCasts\ModelDataWrapper;
 
 final class CommentResourceSecurityTest extends TestCase
@@ -158,41 +160,41 @@ final class CommentResourceSecurityTest extends TestCase
         $this->assertSame(['Visible'], $comments);
     }
 
-    public function test_before_creating_merges_canonical_request_values_for_protected_fields(): void
+    public function test_resource_save_persists_canonical_scope_and_authenticated_author(): void
     {
+        (new MoonShineServiceProvider($this->app))->register();
         PackageSecurityPost::query()->create(['id' => 'post-1', 'title' => 'Post']);
-
-        $author = PackageSecurityUser::query()->create([
-            'id' => 'user-1',
-            'name' => 'Author',
-        ]);
-
+        $author = PackageSecurityUser::query()->create(['id' => 'user-1', 'name' => 'Author']);
         auth()->setUser($author);
-
         request()->replace([
+            'commentable_id' => 'post-1',
+            'commentable_type' => PackageSecurityPost::class,
+            'author_id' => 'forged-user',
+            'author_type' => 'Forged\\User',
+            'parent_id' => null,
+            'text' => 'Visible',
+        ]);
+        $comment = (new Comment)->forceFill([
             'commentable_id' => 'forged-post',
             'commentable_type' => 'Forged\\Model',
             'author_id' => 'forged-user',
             'author_type' => 'Forged\\User',
-            'parent_id' => 'forged-parent',
+            'parent_id' => 999,
             'text' => 'Visible',
         ]);
 
-        request()->merge([
-            'commentable_id' => 'post-1',
-            'commentable_type' => PackageSecurityPost::class,
-            'parent_id' => null,
-        ]);
+        $resource = $this->makeResource();
+        $page = app(CommentFormPage::class);
+        $page->setResource($resource);
+        $resource->save(new ModelDataWrapper($comment), $page->getFields());
 
-        $comment = new Comment;
-
-        $this->makeResource()->runBeforeCreating(new ModelDataWrapper($comment));
-
-        $this->assertSame('post-1', request()->input('commentable_id'));
-        $this->assertSame(PackageSecurityPost::class, request()->input('commentable_type'));
-        $this->assertSame('user-1', request()->input('author_id'));
-        $this->assertSame(PackageSecurityUser::class, request()->input('author_type'));
-        $this->assertNull(request()->input('parent_id'));
+        $saved = Comment::query()->sole();
+        $this->assertSame('post-1', $saved->commentable_id);
+        $this->assertSame(PackageSecurityPost::class, $saved->commentable_type);
+        $this->assertSame('user-1', $saved->author_id);
+        $this->assertSame(PackageSecurityUser::class, $saved->author_type);
+        $this->assertNull($saved->parent_id);
+        $this->assertSame('Visible', $saved->text);
     }
 
     private function makeResource(): CommentResourceSecurityProxy

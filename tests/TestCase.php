@@ -11,6 +11,29 @@ use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $connection = $this->app['db']->connection();
+        $actual = $connection->selectOne('SELECT current_database() AS name, current_user AS role');
+        if ($connection->getDriverName() !== 'pgsql' || $actual->name !== PostgresDatabase::name() || $actual->role !== 'domo_testing') {
+            throw new \RuntimeException('Refusing writes outside the isolated PostgreSQL test database.');
+        }
+        $connection->statement('DROP SCHEMA public CASCADE');
+        $connection->statement('CREATE SCHEMA public AUTHORIZATION domo_testing');
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            if ($this->app !== null) {
+                $this->app['db']->disconnect('testing');
+            }
+        } finally {
+            parent::tearDown();
+        }
+    }
+
     protected function getPackageProviders($app): array
     {
         return [
@@ -26,8 +49,15 @@ abstract class TestCase extends Orchestra
         $app->instance(CoreContract::class, $core);
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
-            'driver' => 'sqlite',
-            'database' => ':memory:',
+            'driver' => 'pgsql',
+            'host' => '127.0.0.1',
+            'port' => 5432,
+            'database' => PostgresDatabase::name(),
+            'username' => 'domo_testing',
+            'password' => getenv('DOMO_TEST_PG_PASSWORD') ?: '',
+            'charset' => 'utf8',
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
             'prefix' => '',
         ]);
     }

@@ -1,0 +1,37 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      DOMO_TEST_PG_PASSWORD: fixture-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql
+          coverage: none
+      - name: Create restricted test role
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d postgres -c "CREATE ROLE domo_testing LOGIN CREATEDB NOSUPERUSER NOCREATEROLE PASSWORD 'fixture-only-password'"
+      - run: composer install --no-interaction --prefer-dist
+      - name: Run PostgreSQL tests
+        run: php vendor/bin/phpunit --fail-on-empty-test-suite --fail-on-warning --fail-on-risky --fail-on-skipped --fail-on-incomplete --log-junit=build/junit-postgresql.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: commentable-postgresql-results
+          path: build/junit-postgresql.xml
