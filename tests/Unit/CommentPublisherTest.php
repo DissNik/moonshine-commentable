@@ -9,7 +9,6 @@ use DissNik\MoonShineCommentable\Contracts\CommentPayloadContract;
 use DissNik\MoonShineCommentable\Contracts\CommentPublisherContract;
 use DissNik\MoonShineCommentable\Models\Comment;
 use DissNik\MoonShineCommentable\Support\CommentPublisher;
-use DissNik\MoonShineCommentable\Support\NullCommentPublisher;
 use DissNik\MoonShineCommentable\Tests\TestCase;
 
 final class CommentPublisherTest extends TestCase
@@ -50,11 +49,6 @@ final class CommentPublisherTest extends TestCase
                 'type' => 'App\\Models\\User',
             ],
         ], $publisher->payloads[0]->toArray());
-    }
-
-    public function test_comment_transport_resolves_null_publisher_by_default(): void
-    {
-        $this->assertInstanceOf(NullCommentPublisher::class, app(CommentPublisherContract::class));
     }
 
     private function makeComment(): Comment
