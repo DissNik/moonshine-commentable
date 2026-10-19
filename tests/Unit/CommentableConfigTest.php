@@ -76,7 +76,7 @@ final class CommentableConfigTest extends TestCase
         $this->assertNull(CommentableConfig::transportPublisher());
     }
 
-    public function test_transport_mode_is_configurable(): void
+    public function test_websocket_mode_is_exposed_through_the_public_transport_configuration(): void
     {
         config()->set('moonshine-commentable.transport.mode', 'websocket');
 
