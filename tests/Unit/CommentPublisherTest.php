@@ -14,6 +14,8 @@ use DissNik\MoonShineCommentable\Tests\TestCase;
 
 final class CommentPublisherTest extends TestCase
 {
+    protected bool $requiresDatabase = false;
+
     public function test_comment_transport_publishes_stable_created_payload(): void
     {
         config()->set('moonshine-commentable.transport.mode', 'websocket');
@@ -57,7 +59,7 @@ final class CommentPublisherTest extends TestCase
 
     private function makeComment(): Comment
     {
-        $comment = new Comment;
+        $comment = (new Comment)->setDateFormat('Y-m-d H:i:s');
         $comment->id = 1;
         $comment->parent_id = 10;
         $comment->text = 'Hello';

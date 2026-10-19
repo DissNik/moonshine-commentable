@@ -11,9 +11,14 @@ use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
 {
+    protected bool $requiresDatabase = true;
+
     protected function setUp(): void
     {
         parent::setUp();
+        if (! $this->requiresDatabase) {
+            return;
+        }
         $connection = $this->app['db']->connection();
         $actual = $connection->selectOne('SELECT current_database() AS name, current_user AS role');
         if ($connection->getDriverName() !== 'pgsql' || $actual->name !== PostgresDatabase::name() || $actual->role !== 'domo_testing') {
@@ -26,7 +31,7 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         try {
-            if ($this->app !== null) {
+            if ($this->app !== null && $this->requiresDatabase) {
                 $this->app['db']->disconnect('testing');
             }
         } finally {
@@ -47,11 +52,19 @@ abstract class TestCase extends Orchestra
         $core->shouldReceive('resources')->andReturnSelf();
 
         $app->instance(CoreContract::class, $core);
+        if (! $this->requiresDatabase) {
+            $app['config']->set('database.default', 'unit-database-disabled');
+            $app['config']->set('database.connections', []);
+
+            return;
+        }
+
+        PostgresDatabase::create();
         $app['config']->set('database.default', 'testing');
         $app['config']->set('database.connections.testing', [
             'driver' => 'pgsql',
             'host' => '127.0.0.1',
-            'port' => 5432,
+            'port' => PostgresDatabase::port(),
             'database' => PostgresDatabase::name(),
             'username' => 'domo_testing',
             'password' => getenv('DOMO_TEST_PG_PASSWORD') ?: '',

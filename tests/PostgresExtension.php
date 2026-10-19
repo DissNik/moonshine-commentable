@@ -15,8 +15,6 @@ final class PostgresExtension implements Extension
 {
     public function bootstrap(Configuration $configuration, Facade $facade, ParameterCollection $parameters): void
     {
-        PostgresDatabase::create();
-        fwrite(STDERR, 'Isolated PostgreSQL database: '.PostgresDatabase::name()."\n");
         $facade->registerSubscriber(new class implements ExecutionFinishedSubscriber
         {
             public function notify(ExecutionFinished $event): void

@@ -18,7 +18,7 @@ final class PostgresDatabase
         if (self::$name !== null) {
             return;
         }
-        $admin = new PDO('pgsql:host=127.0.0.1;port=5432;dbname=postgres', 'domo_testing', getenv('DOMO_TEST_PG_PASSWORD') ?: '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $admin = new PDO('pgsql:host=127.0.0.1;port='.self::port().';dbname=postgres', 'domo_testing', getenv('DOMO_TEST_PG_PASSWORD') ?: '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $role = $admin->query('SELECT current_user, rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user')->fetch(PDO::FETCH_ASSOC);
         if ($role['current_user'] !== 'domo_testing' || $role['rolsuper'] || $role['rolcreaterole']) {
             throw new RuntimeException('Tests require the restricted domo_testing PostgreSQL role.');
@@ -28,6 +28,18 @@ final class PostgresDatabase
         self::$admin = $admin;
         self::$name = $name;
         register_shutdown_function(self::drop(...));
+        fwrite(STDERR, 'Isolated PostgreSQL database: '.$name."\n");
+    }
+
+    public static function port(): int
+    {
+        $configured = getenv('DOMO_TEST_PG_PORT');
+        $port = $configured === false || $configured === '' ? '5432' : $configured;
+        if (! ctype_digit($port) || (int) $port < 1 || (int) $port > 65535) {
+            throw new RuntimeException('Invalid PostgreSQL test port.');
+        }
+
+        return (int) $port;
     }
 
     public static function name(): string

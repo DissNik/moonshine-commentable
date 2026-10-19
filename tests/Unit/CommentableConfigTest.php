@@ -15,6 +15,18 @@ use MoonShine\Laravel\TypeCasts\ModelDataWrapper;
 
 final class CommentableConfigTest extends TestCase
 {
+    protected bool $requiresDatabase = false;
+
+    public function test_unit_fixture_refuses_database_connections_before_opening_pdo(): void
+    {
+        self::assertSame([], config('database.connections'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Database connection [unit-database-disabled] not configured.');
+
+        $this->app['db']->connection()->getPdo();
+    }
+
     public function test_default_presenters_keep_author_details_and_handle_a_missing_author(): void
     {
         $comment = (new Comment)->setRelation('author', new Fluent([
